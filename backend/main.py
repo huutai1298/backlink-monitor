@@ -8,7 +8,9 @@ from routers import auth, customers, websites, backlinks, crawl, blacklist, logs
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from services.scheduler import start_scheduler
+    from services.bot import start_bot
     start_scheduler(app)
+    start_bot(app)
     yield
 
 
