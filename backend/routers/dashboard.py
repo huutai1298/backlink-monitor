@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from database import get_db
@@ -52,6 +52,7 @@ def dashboard_expiring(
             Backlink.date_payment <= cutoff,
             Backlink.status.in_(["live", "pending"]),
         )
+        .options(joinedload(Backlink.customer), joinedload(Backlink.website))
         .all()
     )
     return [
@@ -72,7 +73,12 @@ def dashboard_inactive_alive(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    backlinks = db.query(Backlink).filter(Backlink.status == "inactive").all()
+    backlinks = (
+        db.query(Backlink)
+        .filter(Backlink.status == "inactive")
+        .options(joinedload(Backlink.customer), joinedload(Backlink.website))
+        .all()
+    )
     return [
         {
             "id": bl.id,
@@ -91,16 +97,19 @@ def dashboard_dead_websites(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    websites = db.query(Website).filter(Website.is_dead == True).all()
-    result = []
-    for w in websites:
-        count = db.query(Backlink).filter(Backlink.website_id == w.id).count()
-        result.append(
-            {
-                "id": w.id,
-                "domain": w.domain,
-                "dead_since": w.dead_since,
-                "affected_backlinks": count,
-            }
-        )
-    return result
+    rows = (
+        db.query(Website, func.count(Backlink.id).label("backlink_count"))
+        .outerjoin(Backlink, Backlink.website_id == Website.id)
+        .filter(Website.is_dead == True)
+        .group_by(Website.id)
+        .all()
+    )
+    return [
+        {
+            "id": w.id,
+            "domain": w.domain,
+            "dead_since": w.dead_since,
+            "affected_backlinks": count,
+        }
+        for w, count in rows
+    ]

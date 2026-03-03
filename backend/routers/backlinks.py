@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+from datetime import date
+from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -79,7 +80,7 @@ def bulk_create_backlinks(
     _: dict = Depends(verify_token),
 ):
     today = date.today()
-    payment_date = today + timedelta(days=31)
+    payment_date = today + relativedelta(months=1)
     created = []
 
     for item in data.items:
