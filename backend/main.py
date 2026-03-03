@@ -1,9 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import auth, customers, websites, backlinks, crawl, blacklist, logs, dashboard
 
-app = FastAPI(title="Backlink Monitor API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from services.scheduler import start_scheduler
+    start_scheduler(app)
+    yield
+
+
+app = FastAPI(title="Backlink Monitor API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

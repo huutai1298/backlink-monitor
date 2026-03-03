@@ -1,5 +1,6 @@
 import os
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 
@@ -8,10 +9,16 @@ load_dotenv()
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "secret")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
+_http_bearer = HTTPBearer()
 
-def verify_token(token: str) -> dict:
+
+def verify_token(
+    credentials: HTTPAuthorizationCredentials = Security(_http_bearer),
+) -> dict:
     try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM]
+        )
         return payload
     except JWTError:
         raise HTTPException(
