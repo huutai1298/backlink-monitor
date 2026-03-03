@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+mysql-connector-python
+curl_cffi
+apscheduler
+python-telegram-bot
+openpyxl
+python-jose[cryptography]
+bcrypt
+python-dotenv
+pydantic[email]
