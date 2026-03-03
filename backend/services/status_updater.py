@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models.website import Website
 from models.backlink import Backlink
@@ -64,7 +64,12 @@ async def update_single_domain(domain: str, db: Session) -> None:
         db.commit()
 
     crawled_hrefs = set(result["links"])
-    backlinks = db.query(Backlink).filter(Backlink.website_id == website.id).all()
+    backlinks = (
+        db.query(Backlink)
+        .filter(Backlink.website_id == website.id)
+        .options(joinedload(Backlink.customer))
+        .all()
+    )
 
     lost_backlinks = []
     live_backlinks = []  # lost -> live transitions

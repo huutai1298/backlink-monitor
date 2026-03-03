@@ -36,30 +36,31 @@ def list_logs(
     offset = (page - 1) * limit
     logs = query.order_by(NotificationLog.sent_at.desc()).offset(offset).limit(limit).all()
 
-    result = []
-    for log in logs:
-        customer_name = None
-        website_domain = None
-        if log.customer_id:
-            customer = db.query(Customer).filter(Customer.id == log.customer_id).first()
-            if customer:
-                customer_name = customer.name
-        if log.website_id:
-            website = db.query(Website).filter(Website.id == log.website_id).first()
-            if website:
-                website_domain = website.domain
-        result.append(
-            LogResponse(
-                id=log.id,
-                backlink_id=log.backlink_id,
-                website_id=log.website_id,
-                customer_id=log.customer_id,
-                type=log.type,
-                message=log.message,
-                sent_at=log.sent_at,
-                created_at=log.created_at,
-                customer_name=customer_name,
-                website_domain=website_domain,
-            )
+    # Bulk-load customers and websites to avoid N+1 queries
+    customer_ids = {log.customer_id for log in logs if log.customer_id}
+    website_ids = {log.website_id for log in logs if log.website_id}
+
+    customers = {
+        c.id: c.name
+        for c in db.query(Customer.id, Customer.name).filter(Customer.id.in_(customer_ids)).all()
+    } if customer_ids else {}
+    websites = {
+        w.id: w.domain
+        for w in db.query(Website.id, Website.domain).filter(Website.id.in_(website_ids)).all()
+    } if website_ids else {}
+
+    return [
+        LogResponse(
+            id=log.id,
+            backlink_id=log.backlink_id,
+            website_id=log.website_id,
+            customer_id=log.customer_id,
+            type=log.type,
+            message=log.message,
+            sent_at=log.sent_at,
+            created_at=log.created_at,
+            customer_name=customers.get(log.customer_id),
+            website_domain=websites.get(log.website_id),
         )
-    return result
+        for log in logs
+    ]

@@ -1,7 +1,9 @@
+import logging
 import os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+logger = logging.getLogger(__name__)
 CRAWL_INTERVAL_MINUTES = int(os.getenv("CRAWL_INTERVAL_MINUTES", "60"))
 
 
@@ -16,6 +18,8 @@ def start_scheduler(app) -> None:
         db = SessionLocal()
         try:
             await update_all_domains(db)
+        except Exception:
+            logger.exception("Scheduled crawl_all job failed")
         finally:
             db.close()
 

@@ -10,25 +10,34 @@ except ImportError:
 INTERNAL_GROUP_ID: Optional[str] = os.getenv("INTERNAL_GROUP_ID")
 BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
 
+_bot: Optional[object] = None
+
+
+def _get_bot():
+    global _bot
+    if _bot is None and BOT_TOKEN and Bot is not None:
+        _bot = Bot(token=BOT_TOKEN)
+    return _bot
+
 
 async def send_internal(message: str) -> None:
     """Send message to INTERNAL_GROUP_ID."""
-    if not BOT_TOKEN or not INTERNAL_GROUP_ID or Bot is None:
+    bot = _get_bot()
+    if bot is None or not INTERNAL_GROUP_ID:
         return
-    bot = Bot(token=BOT_TOKEN)
     await bot.send_message(chat_id=INTERNAL_GROUP_ID, text=message)
 
 
 async def send_customer(customer_id: int, message: str, db) -> None:
     """Send message to customer's telegram_group_id."""
-    if not BOT_TOKEN or Bot is None:
+    bot = _get_bot()
+    if bot is None:
         return
     from models.customer import Customer
 
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer or not customer.telegram_group_id:
         return
-    bot = Bot(token=BOT_TOKEN)
     await bot.send_message(chat_id=customer.telegram_group_id, text=message)
 
 
