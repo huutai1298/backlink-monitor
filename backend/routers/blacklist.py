@@ -31,8 +31,8 @@ def add_to_blacklist(
     return entry
 
 
-@router.patch("/{entry_id}/restore", response_model=BlacklistResponse)
-def restore_blacklist(
+@router.patch("/{entry_id}/remove", response_model=BlacklistResponse)
+def remove_from_blacklist(
     entry_id: int,
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),

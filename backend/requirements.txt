@@ -13,3 +13,4 @@ python-dotenv
 pydantic[email]
 beautifulsoup4
 lxml
+python-dateutil
