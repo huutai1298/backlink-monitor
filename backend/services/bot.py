@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
 try:
@@ -15,11 +16,11 @@ TELEGRAM_BOT_TOKEN: str | None = os.getenv("TELEGRAM_BOT_TOKEN")
 INTERNAL_GROUP_ID: str | None = os.getenv("INTERNAL_GROUP_ID")
 
 STATUS_EMOJI = {
-    "live": "✅ Còn sống",
-    "lost": "⚠️ Đã mất",
-    "pending": "⏳ Chờ xử lý",
-    "expired": "⏰ Hết hạn",
-    "inactive": "🔴 Tạm dừng",
+    "live": "✅ Live",
+    "lost": "⚠️ Lost",
+    "pending": "⏳ Pending",
+    "expired": "⏰ Expired",
+    "inactive": "🔴 Inactive",
 }
 
 
@@ -28,6 +29,18 @@ _VN_TZ = timezone(timedelta(hours=7))
 
 def _now_str() -> str:
     return datetime.now(_VN_TZ).strftime("%d/%m/%Y %H:%M")
+
+
+def _format_backlink_detail(i: int, bl, ws=None) -> str:
+    """Return a formatted detail line for a single backlink."""
+    date_placed = (
+        bl.date_placed.strftime("%d/%m/%Y") if bl.date_placed else "N/A"
+    )
+    return (
+        f"{i}. {bl.backlink_url}\n"
+        f"   Anchor: \"{bl.anchor_text or ''}\" | "
+        f"{STATUS_EMOJI.get(bl.status, bl.status)} | {date_placed}"
+    )
 
 
 async def _info_handler(update, context) -> None:
@@ -148,11 +161,11 @@ async def _check_handler(update, context) -> None:
                 text = (
                     f"📊 TỔNG QUAN BACKLINK\n"
                     f"📅 {_now_str()}\n"
-                    f"✅ Còn sống  : {count_map.get('live', 0)} link\n"
-                    f"⚠️ Đã mất   : {count_map.get('lost', 0)} link\n"
-                    f"⏰ Hết hạn  : {count_map.get('expired', 0)} link\n"
-                    f"⏳ Chờ xử lý: {count_map.get('pending', 0)} link\n"
-                    f"🔴 Tạm dừng : {count_map.get('inactive', 0)} link\n"
+                    f"✅ Live      : {count_map.get('live', 0)} link\n"
+                    f"⚠️ Lost      : {count_map.get('lost', 0)} link\n"
+                    f"⏰ Expired   : {count_map.get('expired', 0)} link\n"
+                    f"⏳ Pending   : {count_map.get('pending', 0)} link\n"
+                    f"🔴 Inactive  : {count_map.get('inactive', 0)} link\n"
                     f"💰 Doanh thu đang có: {int(revenue):,} VND/tháng"
                 )
             else:
@@ -178,13 +191,13 @@ async def _check_handler(update, context) -> None:
                 text = (
                     f"📊 TỔNG QUAN BACKLINK\n"
                     f"📅 {_now_str()}\n"
-                    f"✅ Còn sống  : {count_map.get('live', 0)} link\n"
-                    f"⚠️ Đã mất   : {count_map.get('lost', 0)} link\n"
-                    f"⏰ Hết hạn  : {count_map.get('expired', 0)} link"
+                    f"✅ Live      : {count_map.get('live', 0)} link\n"
+                    f"⚠️ Lost      : {count_map.get('lost', 0)} link\n"
+                    f"⏰ Expired   : {count_map.get('expired', 0)} link"
                 )
 
         else:
-            # --- /check keyword: search ---
+            # --- /check keyword: summary grouped by customer+domain (admin) or domain (customer) ---
             if is_internal:
                 results = (
                     db.query(Backlink, Website, Customer)
@@ -202,22 +215,22 @@ async def _check_handler(update, context) -> None:
                     await update.message.reply_text("❌ Không tìm thấy kết quả!")
                     return
 
-                lines = [f'🔍 KẾT QUẢ TÌM KIẾM: "{keyword}"', f"📅 {_now_str()}"]
-                for i, (bl, ws, cust) in enumerate(results, 1):
-                    date_placed = (
-                        bl.date_placed.strftime("%d/%m/%Y")
-                        if bl.date_placed
-                        else "N/A"
-                    )
-                    price = int(ws.price_monthly or 0)
-                    lines.append(
-                        f"{i}. {ws.domain}\n"
-                        f"   Anchor   : \"{bl.anchor_text or ''}\"\n"
-                        f"   Khách    : {cust.name}\n"
-                        f"   Trạng thái: {STATUS_EMOJI.get(bl.status, bl.status)}\n"
-                        f"   Giá      : {price:,} VND/tháng\n"
-                        f"   Ngày thêm: {date_placed}"
-                    )
+                # Group by customer name, then by domain
+                customer_domain_map: dict = defaultdict(lambda: defaultdict(list))
+                for bl, ws, cust in results:
+                    customer_domain_map[cust.name][ws.domain].append(bl)
+
+                lines = [f'🔍 KẾT QUẢ: "{keyword}"', f"📅 {_now_str()}"]
+                for cust_name, domain_map in customer_domain_map.items():
+                    lines.append(f"\n👤 {cust_name}")
+                    for domain, backlinks in domain_map.items():
+                        live_count = sum(1 for bl in backlinks if bl.status == "live")
+                        lost_count = sum(1 for bl in backlinks if bl.status == "lost")
+                        expired_count = sum(1 for bl in backlinks if bl.status == "expired")
+                        lines.append(
+                            f"   {domain} — {len(backlinks)} link\n"
+                            f"   ✅ Live: {live_count}  |  ⚠️ Lost: {lost_count}  |  ⏰ Expired: {expired_count}"
+                        )
                 text = "\n".join(lines)
 
             else:
@@ -249,18 +262,23 @@ async def _check_handler(update, context) -> None:
                     await update.message.reply_text("❌ Không tìm thấy kết quả!")
                     return
 
-                lines = [f'🔍 KẾT QUẢ TÌM KIẾM: "{keyword}"', f"📅 {_now_str()}"]
-                for i, (bl, ws) in enumerate(results, 1):
-                    date_placed = (
-                        bl.date_placed.strftime("%d/%m/%Y")
-                        if bl.date_placed
-                        else "N/A"
-                    )
+                # Group by domain
+                domain_map: dict = defaultdict(list)
+                for bl, ws in results:
+                    domain_map[ws.domain].append(bl)
+
+                lines = [
+                    f'🔍 KẾT QUẢ: "{keyword}"',
+                    f"👤 Khách: {customer.name}",
+                    f"📅 {_now_str()}",
+                ]
+                for domain, backlinks in domain_map.items():
+                    live_count = sum(1 for bl in backlinks if bl.status == "live")
+                    lost_count = sum(1 for bl in backlinks if bl.status == "lost")
+                    expired_count = sum(1 for bl in backlinks if bl.status == "expired")
                     lines.append(
-                        f"{i}. {ws.domain}\n"
-                        f"   Anchor   : \"{bl.anchor_text or ''}\"\n"
-                        f"   Trạng thái: {STATUS_EMOJI.get(bl.status, bl.status)}\n"
-                        f"   Ngày thêm: {date_placed}"
+                        f"\n{domain} — {len(backlinks)} link\n"
+                        f"✅ Live: {live_count}  |  ⚠️ Lost: {lost_count}  |  ⏰ Expired: {expired_count}"
                     )
                 text = "\n".join(lines)
 
