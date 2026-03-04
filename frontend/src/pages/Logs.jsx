@@ -29,10 +29,15 @@ export default function Logs() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     api.get('/customers').then(r => setCustomers(r.data))
   }, [])
+
+  useEffect(() => {
+    setPage(1)
+  }, [filterCustomer, filterType, dateFrom, dateTo])
 
   useEffect(() => {
     setLoading(true)
@@ -41,15 +46,15 @@ export default function Logs() {
     if (filterType) params.type = filterType
     if (dateFrom) params.date_from = dateFrom
     if (dateTo) params.date_to = dateTo
+    params.page = page
     api.get('/logs', { params }).then(r => {
-      setLogs(r.data)
-      setPage(1)
+      setLogs(r.data.items ?? [])
+      setTotal(r.data.total ?? 0)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [filterCustomer, filterType, dateFrom, dateTo])
+  }, [filterCustomer, filterType, dateFrom, dateTo, page])
 
-  const paginated = logs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalPages = Math.ceil(logs.length / PAGE_SIZE)
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <div className="space-y-5">
@@ -107,9 +112,9 @@ export default function Logs() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
-              ) : paginated.length === 0 ? (
+              ) : logs.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">Không có nhật ký</td></tr>
-              ) : paginated.map(log => (
+              ) : logs.map(log => (
                 <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                     {log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : '—'}
@@ -133,7 +138,7 @@ export default function Logs() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">{logs.length} bản ghi</span>
+            <span className="text-xs text-gray-500">{total} bản ghi</span>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
                 <ChevronLeft size={16} />
