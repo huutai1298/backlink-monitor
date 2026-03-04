@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 from sqlalchemy.orm import Session, joinedload
 import logging
 
@@ -83,7 +84,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
 
     for bl in backlinks:
         bl.last_checked = now
-        found = bl.source_href in crawled_hrefs
+        found = _domain_matches(bl.target_url or bl.source_href, crawled_hrefs)
 
         if found:
             bl.last_live_at = now
@@ -200,3 +201,22 @@ def _group_by_customer(bl_data: list) -> dict:
         cid = bl["customer_id"]
         groups.setdefault(cid, []).append(bl)
     return groups
+
+
+def _domain_matches(url: str, crawled_hrefs: set) -> bool:
+    """Check if any crawled href points to the same domain as url."""
+    try:
+        target_domain = urlparse(url).netloc.lower()
+        if target_domain.startswith("www."):
+            target_domain = target_domain[4:]
+        if not target_domain:
+            return False
+        for href in crawled_hrefs:
+            href_domain = urlparse(href).netloc.lower()
+            if href_domain.startswith("www."):
+                href_domain = href_domain[4:]
+            if href_domain == target_domain or href_domain.endswith("." + target_domain):
+                return True
+    except Exception:
+        pass
+    return False
