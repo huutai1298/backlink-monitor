@@ -86,7 +86,6 @@ export default function Backlinks() {
         <h1 className="text-xl font-semibold text-gray-900">Backlinks</h1>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap gap-3">
         <select
           value={filterCustomer}
@@ -115,7 +114,6 @@ export default function Backlinks() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -148,7 +146,7 @@ export default function Backlinks() {
                   <td className="px-5 py-3 text-gray-600 whitespace-nowrap">{bl.customer_name || '—'}</td>
                   <td className="px-5 py-3 text-gray-600 whitespace-nowrap">{bl.price_monthly ? Number(bl.price_monthly).toLocaleString('vi-VN') + ' ₫' : '—'}</td>
                   <td className="px-5 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[bl.status] || 'bg-gray-100 text-gray-600'}`}>    
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[bl.status] || 'bg-gray-100 text-gray-600'}`}> 
                       {STATUS_LABELS[bl.status] || bl.status}
                     </span>
                   </td>
@@ -158,16 +156,11 @@ export default function Backlinks() {
                       <button onClick={() => openEdit(bl)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Sửa">
                         <Pencil size={14} />
                       </button>
-                      {bl.status !== 'inactive' && (
-                        <button onClick={() => setStatus(bl.id, 'inactive')} className="px-2 py-1 rounded-lg text-xs bg-gray-50 hover:bg-gray-100 text-gray-600">
-                          Tạm dừng
-                        </button>
-                      )}
                       {bl.status !== 'expired' && (
                         <button onClick={() => setStatus(bl.id, 'expired')} className="px-2 py-1 rounded-lg text-xs bg-orange-50 hover:bg-orange-100 text-orange-600">
                           Hết hạn
                         </button>
-                      )}
+                      )}  
                       <button onClick={() => deleteItem(bl.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600" title="Xóa">
                         <Trash2 size={14} />
                       </button>
@@ -179,7 +172,6 @@ export default function Backlinks() {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">{backlinks.length} kết quả</span>
@@ -196,7 +188,6 @@ export default function Backlinks() {
         )}
       </div>
 
-      {/* Edit Modal */}
       {editItem && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
