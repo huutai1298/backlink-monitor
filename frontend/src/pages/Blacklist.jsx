@@ -45,8 +45,8 @@ export default function Blacklist() {
                 <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">Blacklist trống</td></tr>
               ) : items.map(item => (
                 <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-5 py-3 font-medium text-gray-900">{item.domain || '—'}</td>
-                  <td className="px-5 py-3 text-gray-600 max-w-xs truncate">{item.source_url || '—'}</td>
+                  <td className="px-5 py-3 font-medium text-gray-900">{item.website_domain || '—'}</td>
+                  <td className="px-5 py-3 text-gray-600 max-w-xs truncate">{item.blacklist_url || '—'}</td>
                   <td className="px-5 py-3 text-gray-600">{item.anchor_text || '—'}</td>
                   <td className="px-5 py-3 text-gray-500">
                     {item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : '—'}
