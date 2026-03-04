@@ -11,7 +11,7 @@ class NotificationLog(Base):
     website_id = Column(Integer, ForeignKey("websites.id"), nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     type = Column(
-        Enum("lost", "live", "inactive_still_live", "website_die", "website_alive"),
+        Enum("lost", "live", "inactive_still_live", "website_die", "website_alive", "command_reply"),
         nullable=False,
     )
     message = Column(Text, nullable=False)

@@ -31,6 +31,36 @@ def _now_str() -> str:
     return datetime.now(_VN_TZ).strftime("%d/%m/%Y %H:%M")
 
 
+async def _save_bot_message(sent_message, chat_id: str, customer_id: int | None = None) -> None:
+    """Save bot message_id to notification_logs for /del cleanup."""
+    from database import SessionLocal
+    from models.notification_log import NotificationLog
+
+    if not sent_message:
+        logger.debug("_save_bot_message: sent_message is None, skipping (chat_id=%s)", chat_id)
+        return
+    db = SessionLocal()
+    try:
+        log = NotificationLog(
+            customer_id=customer_id,
+            type="command_reply",
+            message=sent_message.text or "",
+            telegram_message_id=sent_message.message_id,
+            telegram_chat_id=chat_id,
+            sent_at=datetime.now(timezone.utc),
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        logger.warning(
+            "Failed to save bot message_id to notification_logs (chat_id=%s, customer_id=%s)",
+            chat_id,
+            customer_id,
+        )
+    finally:
+        db.close()
+
+
 def _format_backlink_detail(i: int, bl, ws=None) -> str:
     """Return a formatted detail line for a single backlink."""
     date_placed = (
@@ -58,7 +88,8 @@ async def _info_handler(update, context) -> None:
         f"🔗 URL   : {chat_url}\n"
         f"👉 Sao chép Group ID này để thêm vào hệ thống!"
     )
-    await update.message.reply_text(text)
+    sent = await update.message.reply_text(text)
+    await _save_bot_message(sent, str(update.effective_chat.id))
 
 
 async def _help_handler(update, context) -> None:
@@ -85,7 +116,8 @@ async def _help_handler(update, context) -> None:
             "• Thông báo link inactive vẫn còn tồn tại\n\n"
             "💡 Tip: Dùng /check để kiểm tra nhanh trạng thái hệ thống"
         )
-        await update.message.reply_text(text)
+        sent = await update.message.reply_text(text)
+        await _save_bot_message(sent, chat_id)
         return
 
     db = SessionLocal()
@@ -96,10 +128,11 @@ async def _help_handler(update, context) -> None:
             .first()
         )
         if not customer:
-            await update.message.reply_text(
+            sent = await update.message.reply_text(
                 "❌ Nhóm này chưa được đăng ký trong hệ thống!\n"
                 "Vui lòng liên hệ admin để được hỗ trợ."
             )
+            await _save_bot_message(sent, chat_id)
             return
 
         text = (
@@ -114,10 +147,12 @@ async def _help_handler(update, context) -> None:
             f"• Bạn sẽ nhận thông báo khi backlink bị mất hoặc được phục hồi\n\n"
             f"💡 Tip: Dùng /check để kiểm tra nhanh trạng thái backlink của bạn"
         )
-        await update.message.reply_text(text)
+        sent = await update.message.reply_text(text)
+        await _save_bot_message(sent, chat_id, customer_id=customer.id)
     except Exception:
         logger.exception("Error handling /help command")
-        await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
+        sent = await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
+        await _save_bot_message(sent, chat_id)
     finally:
         db.close()
 
@@ -137,6 +172,7 @@ async def _check_handler(update, context) -> None:
     chat_id = str(chat.id)
     keyword = " ".join(context.args).strip() if context.args else ""
     is_internal = bool(INTERNAL_GROUP_ID and chat_id == str(INTERNAL_GROUP_ID))
+    customer = None
 
     db = SessionLocal()
     try:
@@ -175,9 +211,10 @@ async def _check_handler(update, context) -> None:
                     .first()
                 )
                 if not customer:
-                    await update.message.reply_text(
+                    sent = await update.message.reply_text(
                         "❌ Nhóm này chưa được đăng ký trong hệ thống!"
                     )
+                    await _save_bot_message(sent, chat_id)
                     return
 
                 counts = (
@@ -212,7 +249,8 @@ async def _check_handler(update, context) -> None:
                 )
 
                 if not results:
-                    await update.message.reply_text("❌ Không tìm thấy kết quả!")
+                    sent = await update.message.reply_text("❌ Không tìm thấy kết quả!")
+                    await _save_bot_message(sent, chat_id)
                     return
 
                 # Group by customer name, then by domain
@@ -240,9 +278,10 @@ async def _check_handler(update, context) -> None:
                     .first()
                 )
                 if not customer:
-                    await update.message.reply_text(
+                    sent = await update.message.reply_text(
                         "❌ Nhóm này chưa được đăng ký trong hệ thống!"
                     )
+                    await _save_bot_message(sent, chat_id)
                     return
 
                 # Search ONLY this customer's backlinks — never reveal others' data
@@ -259,7 +298,8 @@ async def _check_handler(update, context) -> None:
                 )
 
                 if not results:
-                    await update.message.reply_text("❌ Không tìm thấy kết quả!")
+                    sent = await update.message.reply_text("❌ Không tìm thấy kết quả!")
+                    await _save_bot_message(sent, chat_id)
                     return
 
                 # Group by domain
@@ -282,11 +322,14 @@ async def _check_handler(update, context) -> None:
                     )
                 text = "\n".join(lines)
 
-        await update.message.reply_text(text)
+        customer_id = customer.id if not is_internal and customer else None
+        sent = await update.message.reply_text(text)
+        await _save_bot_message(sent, chat_id, customer_id=customer_id)
 
     except Exception:
         logger.exception("Error handling /check command")
-        await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
+        sent = await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
+        await _save_bot_message(sent, chat_id)
     finally:
         db.close()
 
@@ -354,7 +397,8 @@ async def _del_handler(update, context) -> None:
         parts = [f"🗑️ Đã xóa {deleted} tin nhắn."]
         if failed:
             parts.append(f"⚠️ {failed} tin nhắn không thể xóa (quá 48h hoặc đã bị xóa).")
-        await update.message.reply_text(" ".join(parts))
+        sent = await update.message.reply_text(" ".join(parts))
+        await _save_bot_message(sent, chat_id)
 
     except Exception:
         logger.exception("Error handling /del command")
