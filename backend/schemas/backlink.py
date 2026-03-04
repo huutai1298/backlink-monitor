@@ -9,7 +9,6 @@ class BacklinkCreate(BaseModel):
     domain: str
     backlink_url: str
     anchor_text: Optional[str] = None
-    target_url: Optional[str] = None
 
 
 class BacklinkBulkCreate(BaseModel):
@@ -28,7 +27,6 @@ class BacklinkResponse(BaseModel):
     website_id: int
     backlink_url: str
     anchor_text: Optional[str] = None
-    target_url: Optional[str] = None
     date_placed: Optional[date] = None
     date_payment: Optional[date] = None
     status: str

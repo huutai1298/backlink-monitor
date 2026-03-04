@@ -53,7 +53,6 @@ def upgrade() -> None:
         sa.Column("website_id", sa.Integer(), nullable=False),
         sa.Column("source_href", sa.String(2048), nullable=False),
         sa.Column("anchor_text", sa.String(500), nullable=True),
-        sa.Column("target_url", sa.String(2048), nullable=True),
         sa.Column("date_placed", sa.Date(), nullable=True),
         sa.Column("date_payment", sa.Date(), nullable=True),
         sa.Column(
