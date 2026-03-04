@@ -4,8 +4,7 @@ from typing import Optional
 
 
 class BlacklistCreate(BaseModel):
-    website_id: Optional[int] = None
-    domain: Optional[str] = None
+    domain: str          # changed from website_id: int
     blacklist_url: str
     anchor_text: Optional[str] = None
 

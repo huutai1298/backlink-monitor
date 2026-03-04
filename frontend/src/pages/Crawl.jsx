@@ -66,20 +66,11 @@ export default function Crawl() {
     const selectedLinks = result.new_links.filter(l => selected.includes(l.href))
 
     if (groupBlacklist) {
-      // Blacklist toàn bộ links đã chọn
-      let wid = websiteId
-      if (!wid) {
-        const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
-        if (wsRes.data && wsRes.data.length > 0) {
-          wid = wsRes.data[0].id
-          setWebsiteId(wid)
-        }
-      }
+      // Blacklist toàn bộ links đã chọn — send domain directly, backend resolves/creates website
       const blacklistedLinks = []
       for (const link of selectedLinks) {
         try {
           await api.post('/blacklist', {
-            ...(wid ? { website_id: wid } : {}),
             domain: domain.trim(),
             blacklist_url: link.href,
             anchor_text: link.anchor_text || null,
@@ -201,105 +192,92 @@ export default function Crawl() {
             <div className="divide-y divide-gray-50">
               {!result.existing_links?.length ? (
                 <p className="px-5 py-6 text-sm text-gray-400 text-center">Không có link nào đã tồn tại</p>
-              ) : result.existing_links.map((link, i) => (
-                <div key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50">
+              ) : result.existing_links.map(link => (
+                <div key={link.href} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 truncate">{link.href || link.backlink_url}</p>
-                    {link.customer_name && <p className="text-xs text-gray-400 mt-0.5">Khách: {link.customer_name}</p>}
+                    <p className="text-sm text-gray-800 truncate">{link.href}</p>
+                    {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>}
                   </div>
-                  {link.status && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[link.status] || 'bg-gray-100 text-gray-600'}`}>{link.status}</span>
-                  )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {link.customer_name && (
+                      <span className="text-xs text-gray-500">{link.customer_name}</span>
+                    )}
+                    {link.status && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[link.status] || 'bg-gray-100 text-gray-600'}`}> 
+                        {link.status}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Blacklisted */}
-          <div className="bg-white rounded-xl border border-gray-100">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">🚫 Blacklisted ({result.blacklisted_links?.length || 0})</h2>
+          {result.blacklisted_links?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="text-sm font-semibold text-gray-900">🚫 Blacklisted ({result.blacklisted_links.length})</h2>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {result.blacklisted_links.map(link => (
+                  <div key={link.href} className="px-5 py-3 hover:bg-gray-50">
+                    <p className="text-sm text-gray-800 truncate">{link.href}</p>
+                    {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-gray-50">
-              {!result.blacklisted_links?.length ? (
-                <p className="px-5 py-6 text-sm text-gray-400 text-center">Không có link nào trong blacklist</p>
-              ) : result.blacklisted_links.map((link, i) => (
-                <div key={i} className="px-5 py-3 hover:bg-gray-50">
-                  <p className="text-sm text-gray-800 truncate">{link.href}</p>
-                  {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Modal xử lý nhóm */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md flex flex-col gap-5">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">Xử lý {selected.length} links đã chọn</h2>
-              <p className="text-xs text-gray-400 mt-1">Chọn khách hàng để thêm backlink, hoặc đánh dấu Blacklist để loại bỏ tất cả.</p>
-            </div>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Xử lý {selected.length} link đã chọn</h3>
 
-            {/* Danh sách link đã chọn (chỉ hiển thị, không tương tác) */}
-            <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
-              {selected.map(href => {
-                const link = result.new_links.find(l => l.href === href)
-                return (
-                  <div key={href} className="px-3 py-2">
-                    <p className="text-xs text-gray-600 truncate">{href}</p>
-                    {link?.anchor_text && <p className="text-xs text-gray-400">Anchor: {link.anchor_text}</p>}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Chọn 1 lần cho tất cả */}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Khách hàng</label>
-                <select
-                  value={groupCustomer}
-                  onChange={e => setGroupCustomer(e.target.value)}
-                  disabled={groupBlacklist}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:bg-gray-50"
-                >
-                  <option value="">— Chọn khách hàng —</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${groupBlacklist ? 'border-red-200 bg-red-50' : 'border-gray-100 hover:bg-gray-50'}`}>  
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={groupBlacklist}
-                  onChange={e => {
-                    setGroupBlacklist(e.target.checked)
-                    if (e.target.checked) setGroupCustomer('')
-                  }}
-                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  onChange={e => setGroupBlacklist(e.target.checked)}
+                  className="rounded border-gray-300 text-red-600"
                 />
-                <div>
-                  <p className="text-sm font-medium text-red-600">Blacklist tất cả</p>
-                  <p className="text-xs text-gray-400">Loại bỏ {selected.length} links này khỏi danh sách theo dõi</p>
-                </div>
+                <span className="text-sm text-gray-700">Thêm vào Blacklist (không theo dõi)</span>
               </label>
+
+              {!groupBlacklist && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Khách hàng</label>
+                  <select
+                    value={groupCustomer}
+                    onChange={e => setGroupCustomer(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— Không gán khách hàng —</option>
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
               >
-                Hủy
+                Huỷ
               </button>
               <button
                 onClick={handleSaveGroup}
-                className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${groupBlacklist ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white ${groupBlacklist ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
-                {groupBlacklist ? `Blacklist ${selected.length} links` : 'Lưu'}
+                {groupBlacklist ? 'Blacklist' : 'Thêm backlinks'}
               </button>
             </div>
           </div>

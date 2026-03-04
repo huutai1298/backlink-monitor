@@ -44,28 +44,31 @@ def add_to_blacklist(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    website_id = data.website_id
-
-    if not website_id:
-        if not data.domain or not data.domain.strip():
-            raise HTTPException(status_code=422, detail="Either website_id or domain must be provided")
-        normalized_domain = data.domain.strip().lower()
-        website = db.query(Website).filter(Website.domain == normalized_domain).first()
-        if not website:
-            website = Website(domain=normalized_domain)
-            db.add(website)
-            db.flush()
-        website_id = website.id
+    # Resolve or auto-create website by domain
+    website = db.query(Website).filter(Website.domain == data.domain).first()
+    if not website:
+        website = Website(domain=data.domain)
+        db.add(website)
+        db.flush()
 
     entry = BlacklistedLink(
-        website_id=website_id,
+        website_id=website.id,
         blacklist_url=data.blacklist_url,
         anchor_text=data.anchor_text,
     )
     db.add(entry)
     db.commit()
     db.refresh(entry)
-    return entry
+    return BlacklistResponse(
+        id=entry.id,
+        website_id=entry.website_id,
+        blacklist_url=entry.blacklist_url,
+        anchor_text=entry.anchor_text,
+        is_active=entry.is_active,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+        website_domain=website.domain,
+    )
 
 
 @router.patch("/{entry_id}/restore", response_model=BlacklistResponse)
