@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 
 const TYPE_BADGE = {
   lost: 'bg-red-50 text-red-700',
@@ -30,6 +30,26 @@ export default function Logs() {
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [clearing, setClearing] = useState(false)
+
+  const handleClearAll = async () => {
+    if (!window.confirm('⚠️ Bạn có chắc muốn xóa TOÀN BỘ lịch sử thông báo?\nHành động này không thể hoàn tác!')) return
+    setClearing(true)
+    try {
+      const res = await api.delete('/logs/clear')
+      alert(`✅ Đã xóa ${res.data.deleted} bản ghi`)
+      setPage(1)
+      setLogs([])
+      setTotal(0)
+      // trigger refetch
+      setFilterCustomer(fc => fc)
+    } catch (err) {
+      console.error('Failed to clear logs:', err)
+      alert('❌ Xóa thất bại. Vui lòng thử lại.')
+    } finally {
+      setClearing(false)
+    }
+  }
 
   useEffect(() => {
     api.get('/customers').then(r => setCustomers(r.data))
@@ -58,7 +78,17 @@ export default function Logs() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold text-gray-900">Nhật ký thông báo</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-gray-900">Nhật ký thông báo</h1>
+        <button
+          onClick={handleClearAll}
+          disabled={clearing || total === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <Trash2 size={15} />
+          {clearing ? 'Đang xóa...' : 'Xóa toàn bộ'}
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap gap-3">

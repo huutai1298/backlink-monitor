@@ -12,6 +12,18 @@ from middleware.auth import verify_token
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 
+@router.delete("/clear", status_code=200)
+def clear_all_logs(
+    db: Session = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """Delete all notification logs."""
+    count = db.query(NotificationLog).count()
+    db.query(NotificationLog).delete()
+    db.commit()
+    return {"deleted": count, "message": f"Đã xóa {count} bản ghi"}
+
+
 @router.get("")
 def list_logs(
     customer_id: Optional[int] = None,
