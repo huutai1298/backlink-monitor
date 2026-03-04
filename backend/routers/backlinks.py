@@ -95,7 +95,7 @@ def bulk_create_backlinks(
 
     for item in data.items:
         blacklisted_entry = db.query(BlacklistedLink).filter(
-            BlacklistedLink.href == item.backlink_url,
+            BlacklistedLink.blacklist_url == item.backlink_url,
             BlacklistedLink.is_active == True,
         ).first()
         if blacklisted_entry:

@@ -157,8 +157,8 @@ updated_at            DATETIME ON UPDATE NOW()
 ### Table: blacklisted_links
 ```
 id            INT PRIMARY KEY AUTO_INCREMENT
-source_url    VARCHAR(255) NOT NULL   -- domain being crawled e.g. example.com
-href          VARCHAR(2048) NOT NULL  -- full href that is blacklisted
+website_id    INT NOT NULL FK -> websites.id
+blacklist_url VARCHAR(2048) NOT NULL  -- full URL that is blacklisted
 anchor_text   VARCHAR(500)
 is_active     BOOLEAN DEFAULT TRUE    -- FALSE = restored (shows again in crawl UI)
 created_at    DATETIME DEFAULT NOW()

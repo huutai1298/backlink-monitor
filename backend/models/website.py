@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, DECIMAL
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -16,3 +17,5 @@ class Website(Base):
     dead_since = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+
+    blacklisted_links = relationship("BlacklistedLink", back_populates="website")
