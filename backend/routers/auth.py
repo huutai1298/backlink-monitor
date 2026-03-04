@@ -62,7 +62,11 @@ def refresh(req: RefreshRequest):
             {"sub": payload.get("sub"), "type": "access"},
             timedelta(minutes=JWT_EXPIRE_MINUTES),
         )
-        return {"access_token": access_token}
+        new_refresh_token = create_token(
+            {"sub": payload.get("sub"), "type": "refresh"},
+            timedelta(days=30),
+        )
+        return {"access_token": access_token, "refresh_token": new_refresh_token}
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

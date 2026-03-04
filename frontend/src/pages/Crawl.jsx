@@ -107,7 +107,7 @@ export default function Crawl() {
       const res = await api.post('/backlinks/bulk', { items: payload })
       if (parseFloat(price) > 0 && res.data?.created?.length > 0) {
         const websiteId = res.data.created[0].website_id
-        await api.put(`/api/websites/${websiteId}`, { price_monthly: parseFloat(price) })
+        await api.put(`/websites/${websiteId}`, { price_monthly: parseFloat(price) })
       }
       const savedHrefs = links.map((l) => l.href)
       const savedLinks = links.map((l) => ({
