@@ -7,6 +7,9 @@ try:
 except ImportError:
     Bot = None  # type: ignore
 
+from models.notification_log import NotificationLog
+from models.customer import Customer
+
 INTERNAL_GROUP_ID: Optional[str] = os.getenv("INTERNAL_GROUP_ID")
 BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
 
@@ -20,25 +23,38 @@ def _get_bot():
     return _bot
 
 
-async def send_internal(message: str) -> None:
-    """Send message to INTERNAL_GROUP_ID."""
+async def send_internal(message: str, db=None, log_id: int = None) -> int | None:
+    """Send message to INTERNAL_GROUP_ID. Returns telegram message_id."""
     bot = _get_bot()
     if bot is None or not INTERNAL_GROUP_ID:
-        return
-    await bot.send_message(chat_id=INTERNAL_GROUP_ID, text=message)
+        return None
+    sent = await bot.send_message(chat_id=INTERNAL_GROUP_ID, text=message)
+    if db and log_id and sent:
+        log = db.query(NotificationLog).filter(NotificationLog.id == log_id).first()
+        if log:
+            log.telegram_message_id = sent.message_id
+            log.telegram_chat_id = str(INTERNAL_GROUP_ID)
+            db.commit()
+    return sent.message_id if sent else None
 
 
-async def send_customer(customer_id: int, message: str, db) -> None:
-    """Send message to customer's telegram_group_id."""
+async def send_customer(customer_id: int, message: str, db, log_id: int = None) -> int | None:
+    """Send message to customer's telegram_group_id. Returns telegram message_id."""
     bot = _get_bot()
     if bot is None:
-        return
-    from models.customer import Customer
+        return None
 
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer or not customer.telegram_group_id:
-        return
-    await bot.send_message(chat_id=customer.telegram_group_id, text=message)
+        return None
+    sent = await bot.send_message(chat_id=customer.telegram_group_id, text=message)
+    if sent and log_id:
+        log = db.query(NotificationLog).filter(NotificationLog.id == log_id).first()
+        if log:
+            log.telegram_message_id = sent.message_id
+            log.telegram_chat_id = str(customer.telegram_group_id)
+            db.commit()
+    return sent.message_id if sent else None
 
 
 # ---------- message formatters ----------

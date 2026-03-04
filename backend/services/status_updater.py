@@ -47,15 +47,14 @@ async def update_single_domain(domain: str, db: Session) -> None:
             msg = notifier.format_website_die(
                 [{"domain": domain, "error": result.get("error", "Unknown")}]
             )
-            await notifier.send_internal(msg)
-            db.add(
-                NotificationLog(
-                    website_id=website.id,
-                    type="website_die",
-                    message=msg,
-                )
+            log = NotificationLog(
+                website_id=website.id,
+                type="website_die",
+                message=msg,
             )
+            db.add(log)
             db.commit()
+            await notifier.send_internal(msg, db=db, log_id=log.id)
         # CRITICAL: do NOT touch any backlink statuses when website is dead
         return
 
@@ -67,15 +66,14 @@ async def update_single_domain(domain: str, db: Session) -> None:
         logger.info("Website recovered: %s", domain)
 
         msg = notifier.format_website_alive([{"domain": domain}])
-        await notifier.send_internal(msg)
-        db.add(
-            NotificationLog(
-                website_id=website.id,
-                type="website_alive",
-                message=msg,
-            )
+        log = NotificationLog(
+            website_id=website.id,
+            type="website_alive",
+            message=msg,
         )
+        db.add(log)
         db.commit()
+        await notifier.send_internal(msg, db=db, log_id=log.id)
 
     crawled_hrefs = set(result["links"])
     crawled_normalized = {_normalize_url(h) for h in crawled_hrefs}
@@ -123,47 +121,61 @@ async def update_single_domain(domain: str, db: Session) -> None:
     if lost_backlinks:
         bl_data = _build_bl_data(lost_backlinks, domain, website)
         msg = notifier.format_lost_internal(bl_data)
-        await notifier.send_internal(msg)
+
+        internal_log_id: int | None = None
+        first_log_per_customer: dict[int, int] = {}
+        for bl in lost_backlinks:
+            log = NotificationLog(
+                backlink_id=bl.id,
+                website_id=website.id,
+                customer_id=bl.customer_id,
+                type="lost",
+                message=msg,
+            )
+            db.add(log)
+            db.flush()
+            if internal_log_id is None:
+                internal_log_id = log.id
+            if bl.customer_id not in first_log_per_customer:
+                first_log_per_customer[bl.customer_id] = log.id
+        db.commit()
+
+        await notifier.send_internal(msg, db=db, log_id=internal_log_id)
 
         by_customer = _group_by_customer(bl_data)
         for cid, bls in by_customer.items():
             cust_msg = notifier.format_lost_customer(bls)
-            await notifier.send_customer(cid, cust_msg, db)
-
-        for bl in lost_backlinks:
-            db.add(
-                NotificationLog(
-                    backlink_id=bl.id,
-                    website_id=website.id,
-                    customer_id=bl.customer_id,
-                    type="lost",
-                    message=msg,
-                )
-            )
-        db.commit()
+            await notifier.send_customer(cid, cust_msg, db, log_id=first_log_per_customer.get(cid))
 
     # --- Notifications for lost->live ---
     if live_backlinks:
         bl_data = _build_bl_data(live_backlinks, domain, website)
         msg = notifier.format_live_internal(bl_data)
-        await notifier.send_internal(msg)
+
+        internal_log_id: int | None = None
+        first_log_per_customer: dict[int, int] = {}
+        for bl in live_backlinks:
+            log = NotificationLog(
+                backlink_id=bl.id,
+                website_id=website.id,
+                customer_id=bl.customer_id,
+                type="live",
+                message=msg,
+            )
+            db.add(log)
+            db.flush()
+            if internal_log_id is None:
+                internal_log_id = log.id
+            if bl.customer_id not in first_log_per_customer:
+                first_log_per_customer[bl.customer_id] = log.id
+        db.commit()
+
+        await notifier.send_internal(msg, db=db, log_id=internal_log_id)
 
         by_customer = _group_by_customer(bl_data)
         for cid, bls in by_customer.items():
             cust_msg = notifier.format_live_customer(bls)
-            await notifier.send_customer(cid, cust_msg, db)
-
-        for bl in live_backlinks:
-            db.add(
-                NotificationLog(
-                    backlink_id=bl.id,
-                    website_id=website.id,
-                    customer_id=bl.customer_id,
-                    type="live",
-                    message=msg,
-                )
-            )
-        db.commit()
+            await notifier.send_customer(cid, cust_msg, db, log_id=first_log_per_customer.get(cid))
 
 
 def _build_bl_data(backlinks: list, domain: str, website: Website) -> list:

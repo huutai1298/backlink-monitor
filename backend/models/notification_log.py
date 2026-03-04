@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, Text, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 from database import Base
 
@@ -17,3 +17,5 @@ class NotificationLog(Base):
     message = Column(Text, nullable=False)
     sent_at = Column(DateTime, default=func.now())
     created_at = Column(DateTime, default=func.now())
+    telegram_message_id = Column(BigInteger, nullable=True)
+    telegram_chat_id = Column(String(64), nullable=True)
