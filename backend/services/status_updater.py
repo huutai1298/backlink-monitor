@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 import logging
@@ -32,7 +33,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
     if not website:
         return
 
-    result = crawl_domain(domain)
+    result = await asyncio.to_thread(crawl_domain, domain)
     now = datetime.now(timezone.utc)
 
     if not result["success"]:
