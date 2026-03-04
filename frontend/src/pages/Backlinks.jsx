@@ -35,10 +35,10 @@ export default function Backlinks() {
     setLoading(true)
     const params = {}
     if (filterCustomer) params.customer_id = filterCustomer
-    if (filterStatus) params.status = filterStatus
-    if (search) params.search = search
+    if (filterStatus) params.status_filter = filterStatus
+    if (search) params.keyword = search
     api.get('/backlinks', { params }).then(r => {
-      setBacklinks(r.data)
+      setBacklinks(r.data.items || [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }
@@ -138,12 +138,12 @@ export default function Backlinks() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
               ) : paginated.map(bl => (
                 <tr key={bl.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-5 py-3 font-medium text-gray-900 max-w-xs truncate">{bl.domain}</td>
+                  <td className="px-5 py-3 font-medium text-gray-900 max-w-xs truncate">{bl.website_domain}</td>
                   <td className="px-5 py-3 text-gray-600">{bl.anchor_text || '—'}</td>
                   <td className="px-5 py-3 text-gray-600">{bl.customer_name || '—'}</td>
                   <td className="px-5 py-3 text-gray-600">{bl.price_monthly ? Number(bl.price_monthly).toLocaleString('vi-VN') + ' ₫' : '—'}</td>
                   <td className="px-5 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[bl.status] || 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[bl.status] || 'bg-gray-100 text-gray-600'}`}> 
                       {STATUS_LABELS[bl.status] || bl.status}
                     </span>
                   </td>
@@ -197,7 +197,7 @@ export default function Backlinks() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
             <h2 className="text-base font-semibold text-gray-900 mb-4">Chỉnh sửa backlink</h2>
-            <p className="text-sm text-gray-500 mb-4 truncate">{editItem.source_url || editItem.domain}</p>
+            <p className="text-sm text-gray-500 mb-4 truncate">{editItem.backlink_url || editItem.website_domain}</p>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Khách hàng</label>
