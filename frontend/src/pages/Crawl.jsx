@@ -17,7 +17,8 @@ export default function Crawl() {
   const [customers, setCustomers] = useState([])
   const [selected, setSelected] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [assignments, setAssignments] = useState({})
+  const [assignments, setAssignments] = useState({})   // href -> customer_id
+  const [blacklists, setBlacklists] = useState({})     // href -> boolean
   const [websiteId, setWebsiteId] = useState(null)
 
   useEffect(() => {
@@ -56,44 +57,61 @@ export default function Crawl() {
   }
 
   const openAddGroup = () => {
-    const init = {}
-    selected.forEach(href => { init[href] = '' })
-    setAssignments(init)
+    const initAssign = {}
+    const initBlack = {}
+    selected.forEach(href => {
+      initAssign[href] = ''
+      initBlack[href] = false
+    })
+    setAssignments(initAssign)
+    setBlacklists(initBlack)
     setShowModal(true)
   }
 
-  const handleAddGroup = async () => {
-    const newLinks = result.new_links.filter(l => selected.includes(l.href))
-    const payload = newLinks.map(l => ({
-      backlink_url: l.href,
-      anchor_text: l.anchor_text || null,
-      customer_id: assignments[l.href] ? parseInt(assignments[l.href]) : null,
-      domain: domain.trim(),
-    }))
-    await api.post('/backlinks/bulk', { items: payload })
-    if (!websiteId) {
-      const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
-      if (wsRes.data && wsRes.data.length > 0) setWebsiteId(wsRes.data[0].id)
-    }
-    const addedHrefs = new Set(selected)
-    const movedLinks = result.new_links.filter(l => addedHrefs.has(l.href)).map(l => ({
-      ...l,
-      status: 'live',
-      customer_name: customers.find(c => String(c.id) === String(assignments[l.href]))?.name || '',
-    }))
-    setResult(prev => ({
-      ...prev,
-      new_links: prev.new_links.filter(l => !addedHrefs.has(l.href)),
-      existing_links: [...(prev.existing_links || []), ...movedLinks],
-    }))
-    setSelected([])
-    setShowModal(false)
-  }
+  const handleSaveGroup = async () => {
+    const toBlacklist = selected.filter(href => blacklists[href])
+    const toAdd = selected.filter(href => !blacklists[href])
 
-  const handleBlacklist = async (link) => {
-    if (!window.confirm(`Thêm "${link.href}" vào blacklist?`)) return
-    try {
-      let wid = websiteId
+    let wid = websiteId
+    if (toBlacklist.length > 0 && !wid) {
+      const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
+      if (wsRes.data && wsRes.data.length > 0) {
+        wid = wsRes.data[0].id
+        setWebsiteId(wid)
+      }
+    }
+
+    // Xử lý blacklist
+    const blacklistedLinks = []
+    for (const href of toBlacklist) {
+      const link = result.new_links.find(l => l.href === href)
+      if (!wid) {
+        alert('Website chưa có trong hệ thống. Hãy thêm ít nhất 1 backlink trước để tạo website, sau đó mới blacklist được.')
+        continue
+      }
+      try {
+        await api.post('/blacklist', {
+          website_id: wid,
+          blacklist_url: href,
+          anchor_text: link?.anchor_text || null,
+        })
+        blacklistedLinks.push(link || { href })
+      } catch (err) {
+        alert('Blacklist thất bại: ' + (err?.response?.data?.detail || err.message))
+      }
+    }
+
+    // Xử lý thêm backlinks
+    let movedLinks = []
+    if (toAdd.length > 0) {
+      const newLinks = result.new_links.filter(l => toAdd.includes(l.href))
+      const payload = newLinks.map(l => ({
+        backlink_url: l.href,
+        anchor_text: l.anchor_text || null,
+        customer_id: assignments[l.href] ? parseInt(assignments[l.href]) : null,
+        domain: domain.trim(),
+      }))
+      await api.post('/backlinks/bulk', { items: payload })
       if (!wid) {
         const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
         if (wsRes.data && wsRes.data.length > 0) {
@@ -101,23 +119,23 @@ export default function Crawl() {
           setWebsiteId(wid)
         }
       }
-      if (!wid) {
-        alert('Website chưa có trong hệ thống. Hãy thêm ít nhất 1 backlink trước để tạo website, sau đó mới blacklist được.')
-        return
-      }
-      await api.post('/blacklist', {
-        website_id: wid,
-        blacklist_url: link.href,
-        anchor_text: link.anchor_text || null,
-      })
-      setResult(prev => ({
-        ...prev,
-        new_links: prev.new_links.filter(l => l.href !== link.href),
-        blacklisted_links: [...(prev.blacklisted_links || []), link],
+      const addedSet = new Set(toAdd)
+      movedLinks = result.new_links.filter(l => addedSet.has(l.href)).map(l => ({
+        ...l,
+        status: 'live',
+        customer_name: customers.find(c => String(c.id) === String(assignments[l.href]))?.name || '',
       }))
-    } catch (err) {
-      alert('Blacklist thất bại: ' + (err?.response?.data?.detail || err.message))
     }
+
+    const allHandled = new Set(selected)
+    setResult(prev => ({
+      ...prev,
+      new_links: prev.new_links.filter(l => !allHandled.has(l.href)),
+      existing_links: [...(prev.existing_links || []), ...movedLinks],
+      blacklisted_links: [...(prev.blacklisted_links || []), ...blacklistedLinks],
+    }))
+    setSelected([])
+    setShowModal(false)
   }
 
   return (
@@ -148,6 +166,7 @@ export default function Crawl() {
 
       {result && !result.error && (
         <div className="space-y-5">
+          {/* New Links */}
           <div className="bg-white rounded-xl border border-gray-100">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">🆕 New Links ({result.new_links?.length || 0})</h2>
@@ -164,7 +183,7 @@ export default function Crawl() {
                     className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg"
                   >
                     <Plus size={13} />
-                    Add Group ({selected.length})
+                    Xử lý ({selected.length})
                   </button>
                 )}
               </div>
@@ -179,19 +198,14 @@ export default function Crawl() {
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-800 truncate">{link.href}</p>
-                    {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>}
+                    {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>} 
                   </div>
-                  <button
-                    onClick={() => handleBlacklist(link)}
-                    className="flex-shrink-0 px-2.5 py-1 rounded-lg text-xs bg-red-50 hover:bg-red-100 text-red-600"
-                  >
-                    Blacklist
-                  </button>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Đã có trong DB */}
           <div className="bg-white rounded-xl border border-gray-100">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-900">✅ Đã có trong DB ({result.existing_links?.length || 0})</h2>
@@ -206,15 +220,14 @@ export default function Crawl() {
                     {link.customer_name && <p className="text-xs text-gray-400 mt-0.5">Khách: {link.customer_name}</p>}
                   </div>
                   {link.status && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[link.status] || 'bg-gray-100 text-gray-600'}`}> %
-                      {link.status}
-                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[link.status] || 'bg-gray-100 text-gray-600'}`}>{link.status}</span>
                   )}
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Blacklisted */}
           <div className="bg-white rounded-xl border border-gray-100">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-900">🚫 Blacklisted ({result.blacklisted_links?.length || 0})</h2>
@@ -233,34 +246,49 @@ export default function Crawl() {
         </div>
       )}
 
+      {/* Modal xử lý nhóm */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Thêm nhóm backlinks</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Xử lý nhóm links</h2>
+            <p className="text-xs text-gray-400 mb-4">Chọn khách hàng để thêm backlink, hoặc đánh dấu Blacklist để loại bỏ.</p>
             <div className="overflow-y-auto flex-1 space-y-3">
               {selected.map(href => {
                 const link = result.new_links.find(l => l.href === href)
+                const isBlacklisted = blacklists[href]
                 return (
-                  <div key={href} className="border border-gray-100 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 truncate mb-2">{href}</p>
+                  <div key={href} className={`border rounded-lg p-3 ${isBlacklisted ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}> 
+                    <p className="text-xs text-gray-500 truncate mb-1">{href}</p>
                     {link?.anchor_text && <p className="text-xs text-gray-400 mb-2">Anchor: {link.anchor_text}</p>}
-                    <select
-                      value={assignments[href] || ''}
-                      onChange={e => setAssignments(a => ({ ...a, [href]: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">— Chọn khách hàng —</option>
-                      {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>) }
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={assignments[href] || ''}
+                        onChange={e => setAssignments(a => ({ ...a, [href]: e.target.value }))}
+                        disabled={isBlacklisted}
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:bg-gray-100"
+                      >
+                        <option value="">— Chọn khách hàng —</option>
+                        {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <label className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-medium text-red-600">
+                        <input
+                          type="checkbox"
+                          checked={isBlacklisted}
+                          onChange={e => setBlacklists(b => ({ ...b, [href]: e.target.checked }))}
+                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                        Blacklist
+                      </label>
+                    </div>
                   </div>
                 )
               })}
             </div>
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                Hủy
+                Hủy 
               </button>
-              <button onClick={handleAddGroup} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+              <button onClick={handleSaveGroup} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
                 Lưu
               </button>
             </div>
