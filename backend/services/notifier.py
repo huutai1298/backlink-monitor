@@ -63,7 +63,7 @@ def format_lost_internal(lost_backlinks: list) -> str:
         cname = bl.get("customer_name", "Unknown")
         by_customer.setdefault(cname, []).append(bl)
 
-    lines = [f"⚠️ BACKLINK LOST", f"📅 {_now_str()}", ""]
+    lines = [f"⚠️ BACKLINK MẤT", f"📅 {_now_str()}", ""]
     total = 0
     for cname, links in by_customer.items():
         lines.append(f"👤 {cname} ({len(links)} links)")
@@ -75,7 +75,7 @@ def format_lost_internal(lost_backlinks: list) -> str:
                 f"{i}. {bl.get('domain', '')} | \"{anchor}\" | {price:,} VND"
             )
         lines.append("")
-    lines.append(f"💸 Total affected: {total:,} VND/month")
+    lines.append(f"💸 Tổng ảnh hưởng: {total:,} VND/tháng")
     return "\n".join(lines)
 
 
@@ -88,10 +88,10 @@ def format_lost_customer(lost_backlinks: list) -> str:
 
     We are checking and will resolve this shortly!
     """
-    lines = [f"⚠️ BACKLINK LOST", f"📅 {_now_str()}", ""]
+    lines = [f"⚠️ BACKLINK MẤT", f"📅 {_now_str()}", ""]
     for i, bl in enumerate(lost_backlinks, 1):
         lines.append(f"{i}. {bl.get('domain', '')}")
-    lines.extend(["", "We are checking and will resolve this shortly!"])
+    lines.extend(["", "Chúng tôi đang kiểm tra và sẽ xử lý sớm!"])
     return "\n".join(lines)
 
 
@@ -110,7 +110,7 @@ def format_live_internal(recovered_backlinks: list) -> str:
         cname = bl.get("customer_name", "Unknown")
         by_customer.setdefault(cname, []).append(bl)
 
-    lines = [f"✅ BACKLINK RECOVERED", f"📅 {_now_str()}", ""]
+    lines = [f"✅ BACKLINK PHỤC HỒI", f"📅 {_now_str()}", ""]
     total = 0
     for cname, links in by_customer.items():
         lines.append(f"👤 {cname} ({len(links)} links)")
@@ -122,7 +122,7 @@ def format_live_internal(recovered_backlinks: list) -> str:
                 f"{i}. {bl.get('domain', '')} | \"{anchor}\" | {price:,} VND"
             )
         lines.append("")
-    lines.append(f"💰 Total recovered: {total:,} VND/month")
+    lines.append(f"💰 Tổng phục hồi: {total:,} VND/tháng")
     return "\n".join(lines)
 
 
@@ -133,7 +133,7 @@ def format_live_customer(recovered_backlinks: list) -> str:
 
     1. domain.com
     """
-    lines = [f"✅ BACKLINK RECOVERED", f"📅 {_now_str()}", ""]
+    lines = [f"✅ BACKLINK PHỤC HỒI", f"📅 {_now_str()}", ""]
     for i, bl in enumerate(recovered_backlinks, 1):
         lines.append(f"{i}. {bl.get('domain', '')}")
     return "\n".join(lines)
@@ -154,7 +154,7 @@ def format_inactive_still_live(backlinks: list) -> str:
         cname = bl.get("customer_name", "Unknown")
         by_customer.setdefault(cname, []).append(bl)
 
-    lines = [f"💡 LINK HAS NOT BEEN REMOVED", f"📅 {_now_str()}", ""]
+    lines = [f"💡 LINK CHƯA ĐƯỢC GỠ", f"📅 {_now_str()}", ""]
     for cname, links in by_customer.items():
         lines.append(f"👤 {cname}")
         for i, bl in enumerate(links, 1):
@@ -168,11 +168,11 @@ def format_inactive_still_live(backlinks: list) -> str:
             )
             lines.append(
                 f"{i}. {bl.get('domain', '')} | \"{anchor}\" | {price:,} VND"
-                f" | expired {expiry_str}"
+                f" | hết hạn {expiry_str}"
             )
         lines.append("")
     lines.append(
-        "👉 These links still exist — consider contacting customer to renew!"
+        "👉 Các link này vẫn còn tồn tại — hãy liên hệ khách hàng để gia hạn!"
     )
     return "\n".join(lines)
 
@@ -186,12 +186,12 @@ def format_website_die(websites: list) -> str:
 
     ⚠️ Backlinks on these domains are temporarily NOT updated!
     """
-    lines = [f"🔴 WEBSITE CANNOT BE ACCESSED", f"📅 {_now_str()}", ""]
+    lines = [f"🔴 WEBSITE KHÔNG THỂ TRUY CẬP", f"📅 {_now_str()}", ""]
     for i, w in enumerate(websites, 1):
         error = w.get("error") or "Unknown"
         lines.append(f"{i}. {w.get('domain', '')} → {error}")
     lines.extend(
-        ["", "⚠️ Backlinks on these domains are temporarily NOT updated!"]
+        ["", "⚠️ Backlink trên các domain này tạm thời KHÔNG được cập nhật!"]
     )
     return "\n".join(lines)
 
@@ -205,8 +205,8 @@ def format_website_alive(websites: list) -> str:
 
     👉 System continues crawling normally!
     """
-    lines = [f"✅ WEBSITE IS BACK ONLINE", f"📅 {_now_str()}", ""]
+    lines = [f"✅ WEBSITE ĐÃ HOẠT ĐỘNG TRỞ LẠI", f"📅 {_now_str()}", ""]
     for i, w in enumerate(websites, 1):
         lines.append(f"{i}. {w.get('domain', '')}")
-    lines.extend(["", "👉 System continues crawling normally!"])
+    lines.extend(["", "👉 Hệ thống tiếp tục crawl bình thường!"])
     return "\n".join(lines)
