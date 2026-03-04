@@ -31,10 +31,15 @@ async def _info_handler(update, context) -> None:
     """Return group ID and group name. Used by admin to register the group."""
     chat = update.effective_chat
     chat_name = chat.title or chat.first_name or "Unknown"
+    if chat.username:
+        chat_url = f"https://t.me/{chat.username}"
+    else:
+        chat_url = f"https://t.me/c/{str(chat.id).replace('-100', '', 1)}"
     text = (
         f"📋 GROUP INFO\n"
         f"🏷️ Name  : {chat_name}\n"
         f"🆔 ID    : {chat.id}\n"
+        f"🔗 URL   : {chat_url}\n"
         f"👉 Copy this Group ID to add to the system!"
     )
     await update.message.reply_text(text)
