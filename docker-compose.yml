@@ -30,14 +30,6 @@ services:
       - app-network
     restart: unless-stopped
 
-  frontend:
-    build: ./frontend
-    depends_on:
-      - backend
-    networks:
-      - app-network
-    restart: unless-stopped
-
   nginx:
     image: nginx:alpine
     ports:
@@ -49,7 +41,6 @@ services:
       - ./nginx/certbot/www:/var/www/certbot:ro
     depends_on:
       - backend
-      - frontend
     networks:
       - app-network
     restart: unless-stopped
