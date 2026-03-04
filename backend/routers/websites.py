@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
 
 from database import get_db, SessionLocal
 from models.website import Website
+from models.backlink import Backlink
+from models.notification_log import NotificationLog
 from schemas.website import WebsiteUpdate, WebsiteResponse
 from middleware.auth import verify_token
 
@@ -52,15 +53,16 @@ def delete_website(
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
-    try:
-        db.delete(website)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot delete website: it has associated backlinks. Remove backlinks first."
-        )
+    # Cascade delete: remove notification_logs linked to this website's backlinks
+    backlink_subquery = db.query(Backlink.id).filter(Backlink.website_id == website_id).subquery()
+    db.query(NotificationLog).filter(NotificationLog.backlink_id.in_(backlink_subquery)).delete(synchronize_session=False)
+    # Cascade delete: remove notification_logs linked directly to this website
+    db.query(NotificationLog).filter(NotificationLog.website_id == website_id).delete(synchronize_session=False)
+    # Cascade delete: remove backlinks linked to this website
+    db.query(Backlink).filter(Backlink.website_id == website_id).delete(synchronize_session=False)
+    # Delete the website
+    db.delete(website)
+    db.commit()
 
 
 @router.post("/{website_id}/crawl")
