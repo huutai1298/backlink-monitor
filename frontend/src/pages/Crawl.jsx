@@ -10,6 +10,17 @@ const STATUS_BADGE = {
   inactive: 'bg-gray-100 text-gray-600',
 }
 
+const normalizeDomain = (input) => {
+  let d = input.trim()
+  // Strip protocol
+  d = d.replace(/^https?:\/\//i, '')
+  // Strip www.
+  d = d.replace(/^www\./i, '')
+  // Strip path, query, hash
+  d = d.split('/')[0].split('?')[0].split('#')[0]
+  return d.toLowerCase()
+}
+
 export default function Crawl() {
   const [domain, setDomain] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,7 +42,7 @@ export default function Crawl() {
     setResult(null)
     setSelected([])
     try {
-      const res = await api.post('/crawl', { domain: domain.trim() })
+      const res = await api.post('/crawl', { domain: normalizeDomain(domain) })
       setResult(res.data)
     } catch {
       setResult({ error: 'Crawl thất bại. Vui lòng thử lại.' })
@@ -65,7 +76,7 @@ export default function Crawl() {
       for (const link of selectedLinks) {
         try {
           await api.post('/blacklist', {
-            domain: domain.trim(),
+            domain: normalizeDomain(domain),
             blacklist_url: link.href,
             anchor_text: link.anchor_text || null,
           })
@@ -86,7 +97,7 @@ export default function Crawl() {
         backlink_url: l.href,
         anchor_text: l.anchor_text || null,
         customer_id: groupCustomer ? parseInt(groupCustomer) : null,
-        domain: domain.trim(),
+        domain: normalizeDomain(domain),
       }))
       await api.post('/backlinks/bulk', { items: payload })
       const customerName = customers.find(c => String(c.id) === String(groupCustomer))?.name || ''
