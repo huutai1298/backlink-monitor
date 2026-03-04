@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Link2, Search, Globe, Users, Ban, ScrollText, LogOut
+  LayoutDashboard, Link2, Search, Globe, Users, MessageSquare, ScrollText, LogOut
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 
@@ -23,7 +23,7 @@ const menuGroups = [
   {
     label: 'HỆ THỐNG',
     items: [
-      { to: '/blacklist', icon: Ban, label: 'Blacklist' },
+      { to: '/blacklist', icon: MessageSquare, label: 'Gửi tin nhắn' },
       { to: '/logs', icon: ScrollText, label: 'Nhật ký thông báo' },
     ]
   },
