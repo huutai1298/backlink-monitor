@@ -49,6 +49,7 @@ def dashboard_expiring(
     backlinks = (
         db.query(Backlink)
         .filter(
+            Backlink.date_payment >= date.today(),
             Backlink.date_payment <= cutoff,
             Backlink.status.in_(["live", "pending"]),
         )
@@ -75,7 +76,10 @@ def dashboard_inactive_alive(
 ):
     backlinks = (
         db.query(Backlink)
-        .filter(Backlink.status == "inactive")
+        .filter(
+            Backlink.status == "inactive",
+            Backlink.inactive_notified_at.isnot(None),
+        )
         .options(joinedload(Backlink.customer), joinedload(Backlink.website))
         .all()
     )

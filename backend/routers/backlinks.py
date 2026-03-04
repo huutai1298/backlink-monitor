@@ -2,11 +2,12 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 
 from database import get_db
 from models.backlink import Backlink
+from models.blacklisted_link import BlacklistedLink
 from models.website import Website
 from schemas.backlink import BacklinkBulkCreate, BacklinkUpdate, BacklinkResponse
 from middleware.auth import verify_token
@@ -40,10 +41,11 @@ def _to_response(bl: Backlink) -> dict:
         "updated_at": bl.updated_at,
         "customer_name": bl.customer.name if bl.customer else None,
         "website_domain": bl.website.domain if bl.website else None,
+        "price_monthly": bl.website.price_monthly if bl.website else None,
     }
 
 
-@router.get("", response_model=List[BacklinkResponse])
+@router.get("")
 def list_backlinks(
     customer_id: Optional[int] = None,
     status_filter: Optional[str] = None,
@@ -69,11 +71,18 @@ def list_backlinks(
             | Backlink.anchor_text.ilike(f"%{keyword}%")
         )
     offset = (page - 1) * limit
-    backlinks = query.offset(offset).limit(limit).all()
-    return [_to_response(bl) for bl in backlinks]
+    total = query.count()
+    backlinks = (
+        query
+        .options(joinedload(Backlink.customer), joinedload(Backlink.website))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return {"items": [_to_response(bl) for bl in backlinks], "total": total}
 
 
-@router.post("/bulk", response_model=List[BacklinkResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/bulk", status_code=status.HTTP_201_CREATED)
 def bulk_create_backlinks(
     data: BacklinkBulkCreate,
     db: Session = Depends(get_db),
@@ -82,8 +91,17 @@ def bulk_create_backlinks(
     today = date.today()
     payment_date = today + relativedelta(months=1)
     created = []
+    skipped = []
 
     for item in data.items:
+        blacklisted_entry = db.query(BlacklistedLink).filter(
+            BlacklistedLink.href == item.source_href,
+            BlacklistedLink.is_active == True,
+        ).first()
+        if blacklisted_entry:
+            skipped.append(item.source_href)
+            continue
+
         domain = _extract_domain(item.source_href)
         website = db.query(Website).filter(Website.domain == domain).first()
         if not website:
@@ -108,7 +126,7 @@ def bulk_create_backlinks(
     db.commit()
     for bl in created:
         db.refresh(bl)
-    return [_to_response(bl) for bl in created]
+    return {"created": [_to_response(bl) for bl in created], "skipped": skipped}
 
 
 @router.put("/{backlink_id}", response_model=BacklinkResponse)

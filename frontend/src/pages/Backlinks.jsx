@@ -66,7 +66,7 @@ export default function Backlinks() {
     setEditModal(bl)
     setEditForm({
       customer_id: bl.customer_id,
-      price: bl.price,
+      price: bl.price_monthly,
       date_payment: bl.date_payment,
     })
   }

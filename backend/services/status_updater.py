@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
+import logging
 
 from models.website import Website
 from models.backlink import Backlink
@@ -7,12 +8,17 @@ from models.notification_log import NotificationLog
 from services.crawler import crawl_domain
 from services import notifier
 
+logger = logging.getLogger(__name__)
+
 
 async def update_all_domains(db: Session) -> None:
     """Crawl all active websites one by one and update backlink statuses."""
     websites = db.query(Website).filter(Website.is_active == True).all()
     for website in websites:
-        await update_single_domain(website.domain, db)
+        try:
+            await update_single_domain(website.domain, db)
+        except Exception as exc:
+            logger.error("Error updating domain %s: %s", website.domain, exc)
 
 
 async def update_single_domain(domain: str, db: Session) -> None:
@@ -22,7 +28,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
         return
 
     result = crawl_domain(domain)
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     if not result["success"]:
         # --- Website DEAD ---

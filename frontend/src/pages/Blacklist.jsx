@@ -18,7 +18,7 @@ export default function Blacklist() {
 
   const handleRestore = async (id) => {
     try {
-      await api.patch(`/blacklist/${id}/remove`)
+      await api.patch(`/blacklist/${id}/restore`)
       setItems((prev) => prev.filter((item) => item.id !== id))
       showToast('Link restored and will reappear in crawl results')
     } catch {

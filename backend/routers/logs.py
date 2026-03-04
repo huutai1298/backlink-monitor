@@ -12,7 +12,7 @@ from middleware.auth import verify_token
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 
-@router.get("", response_model=List[LogResponse])
+@router.get("")
 def list_logs(
     customer_id: Optional[int] = None,
     type: Optional[str] = None,
@@ -34,6 +34,7 @@ def list_logs(
         query = query.filter(NotificationLog.sent_at <= date_to)
 
     offset = (page - 1) * limit
+    total = query.count()
     logs = query.order_by(NotificationLog.sent_at.desc()).offset(offset).limit(limit).all()
 
     # Bulk-load customers and websites to avoid N+1 queries
@@ -49,18 +50,21 @@ def list_logs(
         for w in db.query(Website.id, Website.domain).filter(Website.id.in_(website_ids)).all()
     } if website_ids else {}
 
-    return [
-        LogResponse(
-            id=log.id,
-            backlink_id=log.backlink_id,
-            website_id=log.website_id,
-            customer_id=log.customer_id,
-            type=log.type,
-            message=log.message,
-            sent_at=log.sent_at,
-            created_at=log.created_at,
-            customer_name=customers.get(log.customer_id),
-            website_domain=websites.get(log.website_id),
-        )
-        for log in logs
-    ]
+    return {
+        "items": [
+            LogResponse(
+                id=log.id,
+                backlink_id=log.backlink_id,
+                website_id=log.website_id,
+                customer_id=log.customer_id,
+                type=log.type,
+                message=log.message,
+                sent_at=log.sent_at,
+                created_at=log.created_at,
+                customer_name=customers.get(log.customer_id),
+                website_domain=websites.get(log.website_id),
+            )
+            for log in logs
+        ],
+        "total": total,
+    }
