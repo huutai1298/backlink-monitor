@@ -19,7 +19,6 @@ export default function Crawl() {
   const [showModal, setShowModal] = useState(false)
   const [groupCustomer, setGroupCustomer] = useState('')
   const [groupBlacklist, setGroupBlacklist] = useState(false)
-  const [websiteId, setWebsiteId] = useState(null)
 
   useEffect(() => {
     api.get('/customers').then(r => setCustomers(r.data))
@@ -31,14 +30,9 @@ export default function Crawl() {
     setLoading(true)
     setResult(null)
     setSelected([])
-    setWebsiteId(null)
     try {
       const res = await api.post('/crawl', { domain: domain.trim() })
       setResult(res.data)
-      const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
-      if (wsRes.data && wsRes.data.length > 0) {
-        setWebsiteId(wsRes.data[0].id)
-      }
     } catch {
       setResult({ error: 'Crawl thất bại. Vui lòng thử lại.' })
     } finally {
@@ -95,10 +89,6 @@ export default function Crawl() {
         domain: domain.trim(),
       }))
       await api.post('/backlinks/bulk', { items: payload })
-      if (!websiteId) {
-        const wsRes = await api.get('/websites', { params: { domain: domain.trim() } })
-        if (wsRes.data && wsRes.data.length > 0) setWebsiteId(wsRes.data[0].id)
-      }
       const customerName = customers.find(c => String(c.id) === String(groupCustomer))?.name || ''
       const movedLinks = selectedLinks.map(l => ({
         ...l,
