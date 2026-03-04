@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
 from sqlalchemy.orm import Session, joinedload
 import logging
 
@@ -10,6 +9,10 @@ from services.crawler import crawl_domain
 from services import notifier
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_url(url: str) -> str:
+    return url.lower().strip().rstrip("/")
 
 
 async def update_all_domains(db: Session) -> None:
@@ -71,7 +74,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
         db.commit()
 
     crawled_hrefs = set(result["links"])
-    crawled_lower = {h.lower() for h in crawled_hrefs}
+    crawled_normalized = {_normalize_url(h) for h in crawled_hrefs}
     backlinks = (
         db.query(Backlink)
         .filter(Backlink.website_id == website.id)
@@ -85,8 +88,8 @@ async def update_single_domain(domain: str, db: Session) -> None:
 
     for bl in backlinks:
         bl.last_checked = now
-        bl_url = bl.backlink_url.lower().strip() if bl.backlink_url else None
-        found = bool(bl_url and bl_url in crawled_lower)
+        bl_url = _normalize_url(bl.backlink_url) if bl.backlink_url else None
+        found = bool(bl_url and bl_url in crawled_normalized)
 
         if found:
             bl.last_live_at = now
@@ -203,22 +206,3 @@ def _group_by_customer(bl_data: list) -> dict:
         cid = bl["customer_id"]
         groups.setdefault(cid, []).append(bl)
     return groups
-
-
-def _domain_matches(url: str, crawled_hrefs: set) -> bool:
-    """Check if any crawled href points to the same domain as url."""
-    try:
-        target_domain = urlparse(url).netloc.lower()
-        if target_domain.startswith("www."):
-            target_domain = target_domain[4:]
-        if not target_domain:
-            return False
-        for href in crawled_hrefs:
-            href_domain = urlparse(href).netloc.lower()
-            if href_domain.startswith("www."):
-                href_domain = href_domain[4:]
-            if href_domain == target_domain or href_domain.endswith("." + target_domain):
-                return True
-    except Exception:
-        pass
-    return False

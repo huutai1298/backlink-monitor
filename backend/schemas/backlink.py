@@ -37,5 +37,6 @@ class BacklinkResponse(BaseModel):
     updated_at: Optional[datetime] = None
     customer_name: Optional[str] = None
     website_domain: Optional[str] = None
+    price_monthly: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
