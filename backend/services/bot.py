@@ -15,11 +15,11 @@ TELEGRAM_BOT_TOKEN: str | None = os.getenv("TELEGRAM_BOT_TOKEN")
 INTERNAL_GROUP_ID: str | None = os.getenv("INTERNAL_GROUP_ID")
 
 STATUS_EMOJI = {
-    "live": "✅ Live",
-    "lost": "⚠️ Lost",
-    "pending": "⏳ Pending",
-    "expired": "⏰ Expired",
-    "inactive": "🔴 Inactive",
+    "live": "✅ Còn sống",
+    "lost": "⚠️ Đã mất",
+    "pending": "⏳ Chờ xử lý",
+    "expired": "⏰ Hết hạn",
+    "inactive": "🔴 Tạm dừng",
 }
 
 
@@ -36,11 +36,11 @@ async def _info_handler(update, context) -> None:
     else:
         chat_url = f"https://t.me/c/{str(chat.id).replace('-100', '', 1)}"
     text = (
-        f"📋 GROUP INFO\n"
+        f"📋 THÔNG TIN NHÓM\n"
         f"🏷️ Name  : {chat_name}\n"
         f"🆔 ID    : {chat.id}\n"
         f"🔗 URL   : {chat_url}\n"
-        f"👉 Copy this Group ID to add to the system!"
+        f"👉 Sao chép Group ID này để thêm vào hệ thống!"
     )
     await update.message.reply_text(text)
 
@@ -82,14 +82,14 @@ async def _check_handler(update, context) -> None:
                 )
 
                 text = (
-                    f"📊 BACKLINK OVERVIEW\n"
+                    f"📊 TỔNG QUAN BACKLINK\n"
                     f"📅 {_now_str()}\n"
-                    f"✅ Live      : {count_map.get('live', 0)} links\n"
-                    f"⚠️ Lost      : {count_map.get('lost', 0)} links\n"
-                    f"⏰ Expired   : {count_map.get('expired', 0)} links\n"
-                    f"⏳ Pending   : {count_map.get('pending', 0)} links\n"
-                    f"🔴 Inactive  : {count_map.get('inactive', 0)} links\n"
-                    f"💰 Active revenue: {int(revenue):,} VND/month"
+                    f"✅ Còn sống  : {count_map.get('live', 0)} link\n"
+                    f"⚠️ Đã mất   : {count_map.get('lost', 0)} link\n"
+                    f"⏰ Hết hạn  : {count_map.get('expired', 0)} link\n"
+                    f"⏳ Chờ xử lý: {count_map.get('pending', 0)} link\n"
+                    f"🔴 Tạm dừng : {count_map.get('inactive', 0)} link\n"
+                    f"💰 Doanh thu đang có: {int(revenue):,} VND/tháng"
                 )
             else:
                 customer = (
@@ -99,7 +99,7 @@ async def _check_handler(update, context) -> None:
                 )
                 if not customer:
                     await update.message.reply_text(
-                        "❌ This group is not registered in the system!"
+                        "❌ Nhóm này chưa được đăng ký trong hệ thống!"
                     )
                     return
 
@@ -112,11 +112,11 @@ async def _check_handler(update, context) -> None:
                 count_map = {s: c for s, c in counts}
 
                 text = (
-                    f"📊 BACKLINK OVERVIEW\n"
+                    f"📊 TỔNG QUAN BACKLINK\n"
                     f"📅 {_now_str()}\n"
-                    f"✅ Live      : {count_map.get('live', 0)} links\n"
-                    f"⚠️ Lost      : {count_map.get('lost', 0)} links\n"
-                    f"⏰ Expired   : {count_map.get('expired', 0)} links"
+                    f"✅ Còn sống  : {count_map.get('live', 0)} link\n"
+                    f"⚠️ Đã mất   : {count_map.get('lost', 0)} link\n"
+                    f"⏰ Hết hạn  : {count_map.get('expired', 0)} link"
                 )
 
         else:
@@ -135,10 +135,10 @@ async def _check_handler(update, context) -> None:
                 )
 
                 if not results:
-                    await update.message.reply_text("❌ No results found!")
+                    await update.message.reply_text("❌ Không tìm thấy kết quả!")
                     return
 
-                lines = [f'🔍 SEARCH RESULTS: "{keyword}"', f"📅 {_now_str()}"]
+                lines = [f'🔍 KẾT QUẢ TÌM KIẾM: "{keyword}"', f"📅 {_now_str()}"]
                 for i, (bl, ws, cust) in enumerate(results, 1):
                     date_placed = (
                         bl.date_placed.strftime("%d/%m/%Y")
@@ -149,10 +149,10 @@ async def _check_handler(update, context) -> None:
                     lines.append(
                         f"{i}. {ws.domain}\n"
                         f"   Anchor   : \"{bl.anchor_text or ''}\"\n"
-                        f"   Customer : {cust.name}\n"
-                        f"   Status   : {STATUS_EMOJI.get(bl.status, bl.status)}\n"
-                        f"   Price    : {price:,} VND/month\n"
-                        f"   Added    : {date_placed}"
+                        f"   Khách    : {cust.name}\n"
+                        f"   Trạng thái: {STATUS_EMOJI.get(bl.status, bl.status)}\n"
+                        f"   Giá      : {price:,} VND/tháng\n"
+                        f"   Ngày thêm: {date_placed}"
                     )
                 text = "\n".join(lines)
 
@@ -164,7 +164,7 @@ async def _check_handler(update, context) -> None:
                 )
                 if not customer:
                     await update.message.reply_text(
-                        "❌ This group is not registered in the system!"
+                        "❌ Nhóm này chưa được đăng ký trong hệ thống!"
                     )
                     return
 
@@ -182,10 +182,10 @@ async def _check_handler(update, context) -> None:
                 )
 
                 if not results:
-                    await update.message.reply_text("❌ No results found!")
+                    await update.message.reply_text("❌ Không tìm thấy kết quả!")
                     return
 
-                lines = [f'🔍 SEARCH RESULTS: "{keyword}"', f"📅 {_now_str()}"]
+                lines = [f'🔍 KẾT QUẢ TÌM KIẾM: "{keyword}"', f"📅 {_now_str()}"]
                 for i, (bl, ws) in enumerate(results, 1):
                     date_placed = (
                         bl.date_placed.strftime("%d/%m/%Y")
@@ -195,8 +195,8 @@ async def _check_handler(update, context) -> None:
                     lines.append(
                         f"{i}. {ws.domain}\n"
                         f"   Anchor   : \"{bl.anchor_text or ''}\"\n"
-                        f"   Status   : {STATUS_EMOJI.get(bl.status, bl.status)}\n"
-                        f"   Added    : {date_placed}"
+                        f"   Trạng thái: {STATUS_EMOJI.get(bl.status, bl.status)}\n"
+                        f"   Ngày thêm: {date_placed}"
                     )
                 text = "\n".join(lines)
 
@@ -204,7 +204,7 @@ async def _check_handler(update, context) -> None:
 
     except Exception:
         logger.exception("Error handling /check command")
-        await update.message.reply_text("❌ An error occurred. Please try again.")
+        await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
     finally:
         db.close()
 
