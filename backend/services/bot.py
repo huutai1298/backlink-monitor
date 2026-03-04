@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 try:
     from telegram.ext import ApplicationBuilder, CommandHandler
@@ -23,8 +23,11 @@ STATUS_EMOJI = {
 }
 
 
+_VN_TZ = timezone(timedelta(hours=7))
+
+
 def _now_str() -> str:
-    return datetime.now().strftime("%d/%m/%Y %H:%M")
+    return datetime.now(_VN_TZ).strftime("%d/%m/%Y %H:%M")
 
 
 async def _info_handler(update, context) -> None:

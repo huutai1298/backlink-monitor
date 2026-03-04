@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 try:
@@ -44,8 +44,11 @@ async def send_customer(customer_id: int, message: str, db) -> None:
 # ---------- message formatters ----------
 
 
+_VN_TZ = timezone(timedelta(hours=7))
+
+
 def _now_str() -> str:
-    return datetime.now().strftime("%d/%m/%Y %H:%M")
+    return datetime.now(_VN_TZ).strftime("%d/%m/%Y %H:%M")
 
 
 def format_lost_internal(lost_backlinks: list) -> str:
