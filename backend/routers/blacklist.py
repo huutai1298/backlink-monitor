@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from database import get_db
 from models.blacklisted_link import BlacklistedLink
+from models.website import Website
 from schemas.blacklist import BlacklistCreate, BlacklistResponse
 from middleware.auth import verify_token
 
@@ -15,7 +16,26 @@ def list_blacklist(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    return db.query(BlacklistedLink).filter(BlacklistedLink.is_active == True).all()
+    entries = (
+        db.query(BlacklistedLink)
+        .options(joinedload(BlacklistedLink.website))
+        .filter(BlacklistedLink.is_active == True)
+        .all()
+    )
+    result = []
+    for entry in entries:
+        item = BlacklistResponse(
+            id=entry.id,
+            website_id=entry.website_id,
+            blacklist_url=entry.blacklist_url,
+            anchor_text=entry.anchor_text,
+            is_active=entry.is_active,
+            created_at=entry.created_at,
+            updated_at=entry.updated_at,
+            website_domain=entry.website.domain if entry.website else None,
+        )
+        result.append(item)
+    return result
 
 
 @router.post("", response_model=BlacklistResponse, status_code=status.HTTP_201_CREATED)
