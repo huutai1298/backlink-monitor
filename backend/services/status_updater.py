@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 import logging
 
@@ -84,7 +84,6 @@ async def update_single_domain(domain: str, db: Session) -> None:
 
     lost_backlinks = []
     live_backlinks = []  # lost -> live transitions
-    inactive_still_live = []
 
     for bl in backlinks:
         bl.last_checked = now
@@ -102,13 +101,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
                 bl.lost_at = None
                 live_backlinks.append(bl)
             elif bl.status == "inactive":
-                # Notify internal every 24 h while link still found
-                should_notify = bl.inactive_notified_at is None or (
-                    now - bl.inactive_notified_at
-                ) >= timedelta(hours=24)
-                if should_notify:
-                    inactive_still_live.append(bl)
-                    bl.inactive_notified_at = now
+                pass  # inactive: no action needed
             # expired: no action
         else:
             if bl.status == "live":
@@ -162,24 +155,6 @@ async def update_single_domain(domain: str, db: Session) -> None:
                     website_id=website.id,
                     customer_id=bl.customer_id,
                     type="live",
-                    message=msg,
-                )
-            )
-        db.commit()
-
-    # --- Notifications for inactive still live ---
-    if inactive_still_live:
-        bl_data = _build_bl_data(inactive_still_live, domain, website)
-        msg = notifier.format_inactive_still_live(bl_data)
-        await notifier.send_internal(msg)
-
-        for bl in inactive_still_live:
-            db.add(
-                NotificationLog(
-                    backlink_id=bl.id,
-                    website_id=website.id,
-                    customer_id=bl.customer_id,
-                    type="inactive_still_live",
                     message=msg,
                 )
             )
