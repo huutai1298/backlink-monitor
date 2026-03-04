@@ -77,8 +77,8 @@ async def _help_handler(update, context) -> None:
             "/help — Hiển thị hướng dẫn này\n"
             "/info — Lấy ID & URL của nhóm hiện tại\n"
             "/check — Xem tổng quan toàn bộ backlink + doanh thu\n"
-            "/check <keyword> — Tóm tắt backlink theo domain/anchor/URL (nhóm theo khách hàng)\n"
-            "/detail <keyword> — Chi tiết đầy đủ backlink theo domain/anchor/URL\n\n"
+            "/check <keyword> — Tìm kiếm backlink theo domain/anchor/URL\n"
+            "/del — Xóa tất cả tin nhắn của bot trong 48h qua\n\n"
             "📊 Thông báo tự động:\n"
             "• Bot sẽ tự động thông báo khi backlink bị mất hoặc phục hồi\n"
             "• Thông báo khi website không thể truy cập\n"
@@ -108,8 +108,8 @@ async def _help_handler(update, context) -> None:
             f"🔧 Các lệnh có thể sử dụng:\n"
             f"/help — Hiển thị hướng dẫn này\n"
             f"/check — Xem tổng quan backlink của bạn\n"
-            f"/check <keyword> — Tóm tắt backlink theo domain hoặc anchor text\n"
-            f"/detail <keyword> — Chi tiết đầy đủ backlink theo domain hoặc anchor text\n\n"
+            f"/check <keyword> — Tìm kiếm backlink theo domain hoặc anchor text\n"
+            f"/del — Xóa tất cả tin nhắn của bot trong 48h qua\n\n"
             f"📊 Thông báo tự động:\n"
             f"• Bạn sẽ nhận thông báo khi backlink bị mất hoặc được phục hồi\n\n"
             f"💡 Tip: Dùng /check để kiểm tra nhanh trạng thái backlink của bạn"
@@ -291,58 +291,32 @@ async def _check_handler(update, context) -> None:
         db.close()
 
 
-async def _detail_handler(update, context) -> None:
-    """
-    /detail keyword  — full details per backlink
-                       (admin: grouped by customer; customer: own links, no price)
-    """
+async def _del_handler(update, context) -> None:
+    """Delete all bot messages in this group sent within the last 48 hours."""
     from database import SessionLocal
-    from models.backlink import Backlink
+    from models.notification_log import NotificationLog
     from models.customer import Customer
-    from models.website import Website
+    from datetime import datetime, timezone, timedelta
 
     chat = update.effective_chat
     chat_id = str(chat.id)
-    keyword = " ".join(context.args).strip() if context.args else ""
     is_internal = bool(INTERNAL_GROUP_ID and chat_id == str(INTERNAL_GROUP_ID))
 
-    if not keyword:
-        await update.message.reply_text(
-            "❌ Vui lòng cung cấp từ khóa!\nVí dụ: /detail example.com"
-        )
-        return
-
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
     db = SessionLocal()
+    deleted = 0
+    failed = 0
     try:
         if is_internal:
-            results = (
-                db.query(Backlink, Website, Customer)
-                .join(Website, Backlink.website_id == Website.id)
-                .join(Customer, Backlink.customer_id == Customer.id)
+            logs = (
+                db.query(NotificationLog)
                 .filter(
-                    Website.domain.ilike(f"%{keyword}%")
-                    | Backlink.anchor_text.ilike(f"%{keyword}%")
-                    | Backlink.backlink_url.ilike(f"%{keyword}%")
+                    NotificationLog.telegram_chat_id == chat_id,
+                    NotificationLog.telegram_message_id.isnot(None),
+                    NotificationLog.sent_at >= cutoff,
                 )
                 .all()
             )
-
-            if not results:
-                await update.message.reply_text("❌ Không tìm thấy kết quả!")
-                return
-
-            # Group by customer name
-            customer_backlinks: dict = defaultdict(list)
-            for bl, ws, cust in results:
-                customer_backlinks[cust.name].append((bl, ws))
-
-            lines = [f'📋 CHI TIẾT: "{keyword}"', f"📅 {_now_str()}"]
-            for cust_name, bl_ws_list in customer_backlinks.items():
-                lines.append(f"\n👤 {cust_name}")
-                for i, (bl, ws) in enumerate(bl_ws_list, 1):
-                    lines.append(_format_backlink_detail(i, bl))
-            text = "\n".join(lines)
-
         else:
             customer = (
                 db.query(Customer)
@@ -350,41 +324,40 @@ async def _detail_handler(update, context) -> None:
                 .first()
             )
             if not customer:
-                await update.message.reply_text(
-                    "❌ Nhóm này chưa được đăng ký trong hệ thống!"
-                )
+                await update.message.reply_text("❌ Nhóm này chưa được đăng ký trong hệ thống!")
                 return
-
-            # Search ONLY this customer's backlinks — never reveal others' data
-            results = (
-                db.query(Backlink, Website)
-                .join(Website, Backlink.website_id == Website.id)
-                .filter(Backlink.customer_id == customer.id)
+            logs = (
+                db.query(NotificationLog)
                 .filter(
-                    Website.domain.ilike(f"%{keyword}%")
-                    | Backlink.anchor_text.ilike(f"%{keyword}%")
-                    | Backlink.backlink_url.ilike(f"%{keyword}%")
+                    NotificationLog.telegram_chat_id == chat_id,
+                    NotificationLog.telegram_message_id.isnot(None),
+                    NotificationLog.sent_at >= cutoff,
                 )
                 .all()
             )
 
-            if not results:
-                await update.message.reply_text("❌ Không tìm thấy kết quả!")
-                return
+        bot = context.bot
+        for log in logs:
+            try:
+                await bot.delete_message(chat_id=chat_id, message_id=log.telegram_message_id)
+                log.telegram_message_id = None  # mark as deleted
+                deleted += 1
+            except Exception:
+                logger.warning(
+                    "Failed to delete message %s in chat %s",
+                    log.telegram_message_id,
+                    chat_id,
+                )
+                failed += 1
+        db.commit()
 
-            lines = [
-                f'📋 CHI TIẾT: "{keyword}"',
-                f"👤 Khách: {customer.name}",
-                f"📅 {_now_str()}",
-            ]
-            for i, (bl, ws) in enumerate(results, 1):
-                lines.append("\n" + _format_backlink_detail(i, bl))
-            text = "\n".join(lines)
-
-        await update.message.reply_text(text)
+        parts = [f"🗑️ Đã xóa {deleted} tin nhắn."]
+        if failed:
+            parts.append(f"⚠️ {failed} tin nhắn không thể xóa (quá 48h hoặc đã bị xóa).")
+        await update.message.reply_text(" ".join(parts))
 
     except Exception:
-        logger.exception("Error handling /detail command")
+        logger.exception("Error handling /del command")
         await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
     finally:
         db.close()
@@ -404,7 +377,7 @@ def start_bot(app) -> None:
     bot_app.add_handler(CommandHandler("help", _help_handler))
     bot_app.add_handler(CommandHandler("info", _info_handler))
     bot_app.add_handler(CommandHandler("check", _check_handler))
-    bot_app.add_handler(CommandHandler("detail", _detail_handler))
+    bot_app.add_handler(CommandHandler("del", _del_handler))
 
     async def _run_polling() -> None:
         try:
