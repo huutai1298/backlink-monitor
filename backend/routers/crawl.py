@@ -18,15 +18,24 @@ def crawl(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    from services.crawler import crawl_domain as do_crawl
+    from urllib.parse import urlparse
+    from services.crawler import crawl_domain as do_crawl, _normalise_domain as normalise
 
-    result = do_crawl(data.domain)
+    # Normalize: strip protocol, www, path
+    raw = data.domain.strip()
+    if raw.startswith(("http://", "https://")):
+        raw = urlparse(raw).netloc or raw
+    else:
+        raw = raw.split('/')[0]  # strip any path for non-protocol inputs
+    domain = normalise(raw)
+
+    result = do_crawl(domain)
 
     link_details = result.get("link_details", [])
     crawled_hrefs = {item["href"] for item in link_details}
 
     # Get existing backlinks for this domain
-    website = db.query(Website).filter(Website.domain == data.domain).first()
+    website = db.query(Website).filter(Website.domain == domain).first()
     existing_hrefs: set = set()
     existing_links: List[dict] = []
 
@@ -49,7 +58,7 @@ def crawl(
         .join(BlacklistedLink.website)
         .filter(
             BlacklistedLink.is_active == True,
-            Website.domain == data.domain,
+            Website.domain == domain,
         )
         .all()
     )
@@ -69,7 +78,7 @@ def crawl(
             new_links.append(CrawlLinkItem(href=href, anchor_text=anchor))
 
     return CrawlResponse(
-        domain=data.domain,
+        domain=domain,
         new_links=new_links,
         existing_links=existing_links,
         blacklisted_links=blacklisted_links,
