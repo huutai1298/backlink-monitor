@@ -188,8 +188,7 @@ def format_website_die(websites: list) -> str:
     """
     lines = [f"🔴 WEBSITE KHÔNG THỂ TRUY CẬP", f"📅 {_now_str()}", ""]
     for i, w in enumerate(websites, 1):
-        error = w.get("error") or "Unknown"
-        lines.append(f"{i}. {w.get('domain', '')} → {error}")
+        lines.append(f"{i}. {w.get('domain', '')}")
     lines.extend(
         ["", "⚠️ Backlink trên các domain này tạm thời KHÔNG được cập nhật!"]
     )
