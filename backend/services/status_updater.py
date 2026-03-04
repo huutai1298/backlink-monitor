@@ -27,6 +27,7 @@ async def update_all_domains(db: Session) -> None:
 
 async def update_single_domain(domain: str, db: Session) -> None:
     """Crawl a single domain and update its backlink statuses."""
+    logger.info("Crawling domain: %s", domain)
     website = db.query(Website).filter(Website.domain == domain).first()
     if not website:
         return
@@ -40,6 +41,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
             website.is_dead = True
             website.dead_since = now
             db.commit()
+            logger.warning("Website marked DEAD: %s — error: %s", domain, result.get("error"))
 
             msg = notifier.format_website_die(
                 [{"domain": domain, "error": result.get("error", "Unknown")}]
@@ -61,6 +63,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
     if was_dead:
         website.is_dead = False
         db.commit()
+        logger.info("Website recovered: %s", domain)
 
         msg = notifier.format_website_alive([{"domain": domain}])
         await notifier.send_internal(msg)
@@ -113,6 +116,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
             # inactive, expired: no action
 
     db.commit()
+    logger.info("Domain %s: %d lost, %d recovered", domain, len(lost_backlinks), len(live_backlinks))
 
     # --- Notifications for live->lost ---
     if lost_backlinks:
