@@ -128,6 +128,23 @@ def bulk_create_backlinks(
     return {"created": [_to_response(bl) for bl in created], "skipped": skipped}
 
 
+@router.get("/{backlink_id}")
+def get_backlink(
+    backlink_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    bl = (
+        db.query(Backlink)
+        .options(joinedload(Backlink.customer), joinedload(Backlink.website))
+        .filter(Backlink.id == backlink_id)
+        .first()
+    )
+    if not bl:
+        raise HTTPException(status_code=404, detail="Backlink not found")
+    return _to_response(bl)
+
+
 @router.put("/{backlink_id}", response_model=BacklinkResponse)
 def update_backlink(
     backlink_id: int,
@@ -148,6 +165,23 @@ def update_backlink(
         if website:
             website.price_monthly = data.price
 
+    db.commit()
+    db.refresh(bl)
+    return _to_response(bl)
+
+
+@router.patch("/{backlink_id}/live", response_model=BacklinkResponse)
+def set_live(
+    backlink_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    bl = db.query(Backlink).filter(Backlink.id == backlink_id).first()
+    if not bl:
+        raise HTTPException(status_code=404, detail="Backlink not found")
+    bl.status = "live"
+    bl.last_live_at = datetime.now(timezone.utc)
+    bl.lost_at = None
     db.commit()
     db.refresh(bl)
     return _to_response(bl)

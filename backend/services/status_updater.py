@@ -71,6 +71,7 @@ async def update_single_domain(domain: str, db: Session) -> None:
         db.commit()
 
     crawled_hrefs = set(result["links"])
+    crawled_lower = {h.lower() for h in crawled_hrefs}
     backlinks = (
         db.query(Backlink)
         .filter(Backlink.website_id == website.id)
@@ -84,8 +85,8 @@ async def update_single_domain(domain: str, db: Session) -> None:
 
     for bl in backlinks:
         bl.last_checked = now
-        bl_domain = bl.backlink_url.lower().strip() if bl.backlink_url else None
-        found = bool(bl_domain and any(bl_domain in href.lower() for href in crawled_hrefs))
+        bl_url = bl.backlink_url.lower().strip() if bl.backlink_url else None
+        found = bool(bl_url and bl_url in crawled_lower)
 
         if found:
             bl.last_live_at = now
