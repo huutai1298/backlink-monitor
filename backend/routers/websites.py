@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
 
 from database import get_db, SessionLocal
@@ -51,8 +52,15 @@ def delete_website(
     website = db.query(Website).filter(Website.id == website_id).first()
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
-    db.delete(website)
-    db.commit()
+    try:
+        db.delete(website)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete website: it has associated backlinks. Remove backlinks first."
+        )
 
 
 @router.post("/{website_id}/crawl")

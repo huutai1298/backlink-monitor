@@ -69,7 +69,7 @@ export default function Crawl() {
       setResults((r) => ({
         ...r,
         new_links: r.new_links.filter((l) => l.href !== link.href),
-        blacklisted: [...(r.blacklisted || []), link],
+        blacklisted_links: [...(r.blacklisted_links || []), link],
       }))
       setSelected((s) => s.filter((h) => h !== link.href))
     } catch {
@@ -101,11 +101,14 @@ export default function Crawl() {
       anchor_text: l.anchor_text,
       customer_id: parseInt(customerMap[l.href]),
       domain: domain.trim(),
-      price: parseFloat(price) || 0,
     }))
     setSaving(true)
     try {
-      await api.post('/backlinks/bulk', { domain: domain.trim(), price: parseFloat(price) || 0, backlinks: payload })
+      const res = await api.post('/backlinks/bulk', { items: payload })
+      if (parseFloat(price) > 0 && res.data?.created?.length > 0) {
+        const websiteId = res.data.created[0].website_id
+        await api.put(`/api/websites/${websiteId}`, { price_monthly: parseFloat(price) })
+      }
       const savedHrefs = links.map((l) => l.href)
       const savedLinks = links.map((l) => ({
         ...l,
@@ -115,7 +118,7 @@ export default function Crawl() {
       setResults((r) => ({
         ...r,
         new_links: r.new_links.filter((l) => !savedHrefs.includes(l.href)),
-        in_db: [...(r.in_db || []), ...savedLinks],
+        existing_links: [...(r.existing_links || []), ...savedLinks],
       }))
       setSelected([])
       setAddGroupOpen(false)
@@ -205,12 +208,12 @@ export default function Crawl() {
 
           <div className="bg-white rounded-card shadow p-4">
             <h2 className="font-semibold text-slate-700 mb-3">
-              ✅ Already in DB ({results.in_db?.length || 0})
+              ✅ Already in DB ({results.existing_links?.length || 0})
             </h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {results.in_db?.length === 0 ? (
+              {results.existing_links?.length === 0 ? (
                 <p className="text-slate-400 text-sm">None.</p>
-              ) : results.in_db?.map((link, i) => (
+              ) : results.existing_links?.map((link, i) => (
                 <div key={i} className="border-b pb-2">
                   <p className="text-xs text-slate-700 truncate">{link.href}</p>
                   <p className="text-xs text-slate-400">{link.anchor_text}</p>
@@ -227,12 +230,12 @@ export default function Crawl() {
 
           <div className="bg-white rounded-card shadow p-4">
             <h2 className="font-semibold text-slate-700 mb-3">
-              🚫 Blacklisted ({results.blacklisted?.length || 0})
+              🚫 Blacklisted ({results.blacklisted_links?.length || 0})
             </h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {results.blacklisted?.length === 0 ? (
+              {results.blacklisted_links?.length === 0 ? (
                 <p className="text-slate-400 text-sm">None.</p>
-              ) : results.blacklisted?.map((link, i) => (
+              ) : results.blacklisted_links?.map((link, i) => (
                 <div key={i} className="border-b pb-2">
                   <p className="text-xs text-slate-700 truncate">{link.href}</p>
                   <p className="text-xs text-slate-400">{link.anchor_text}</p>
