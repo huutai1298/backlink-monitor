@@ -107,6 +107,13 @@ export default function Crawl() {
 
   const handleSaveGroup = async () => {
     const links = results.new_links.filter((l) => selected.includes(l.href))
+
+    const missingCustomer = links.filter((l) => !customerMap[l.href] || !parseInt(customerMap[l.href]))
+    if (missingCustomer.length > 0) {
+      alert('Vui lòng chọn customer cho tất cả các link đã chọn!')
+      return
+    }
+
     const payload = links.map((l) => {
       const customer = customers.find((c) => c.id === parseInt(customerMap[l.href]))
       return {
