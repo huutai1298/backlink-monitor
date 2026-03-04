@@ -53,7 +53,7 @@ def add_to_blacklist(
 
     entry = BlacklistedLink(
         website_id=website.id,
-        blacklist_url=data.blacklink_url,
+        blacklist_url=data.blacklist_url,
         anchor_text=data.anchor_text,
     )
     db.add(entry)
