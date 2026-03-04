@@ -84,8 +84,8 @@ async def update_single_domain(domain: str, db: Session) -> None:
 
     for bl in backlinks:
         bl.last_checked = now
-        anchor = bl.anchor_text.lower() if bl.anchor_text else None
-        found = bool(anchor and any(anchor in href.lower() for href in crawled_hrefs))
+        bl_domain = bl.backlink_url.lower().strip() if bl.backlink_url else None
+        found = bool(bl_domain and any(bl_domain in href.lower() for href in crawled_hrefs))
 
         if found:
             bl.last_live_at = now

@@ -129,7 +129,7 @@ async def _check_handler(update, context) -> None:
                     .filter(
                         Website.domain.ilike(f"%{keyword}%")
                         | Backlink.anchor_text.ilike(f"%{keyword}%")
-                        | Backlink.source_href.ilike(f"%{keyword}%")
+                        | Backlink.backlink_url.ilike(f"%{keyword}%")
                     )
                     .all()
                 )
@@ -176,7 +176,7 @@ async def _check_handler(update, context) -> None:
                     .filter(
                         Website.domain.ilike(f"%{keyword}%")
                         | Backlink.anchor_text.ilike(f"%{keyword}%")
-                        | Backlink.source_href.ilike(f"%{keyword}%")
+                        | Backlink.backlink_url.ilike(f"%{keyword}%")
                     )
                     .all()
                 )

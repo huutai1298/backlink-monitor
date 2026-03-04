@@ -33,10 +33,10 @@ def crawl(
     if website:
         backlinks = db.query(Backlink).filter(Backlink.website_id == website.id).all()
         for bl in backlinks:
-            existing_hrefs.add(bl.source_href)
+            existing_hrefs.add(bl.backlink_url)
             existing_links.append(
                 {
-                    "href": bl.source_href,
+                    "href": bl.backlink_url,
                     "anchor_text": bl.anchor_text,
                     "status": bl.status,
                     "customer_name": bl.customer.name if bl.customer else None,
