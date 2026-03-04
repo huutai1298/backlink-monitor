@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -117,7 +117,8 @@ def bulk_create_backlinks(
             target_url=item.target_url,
             date_placed=today,
             date_payment=payment_date,
-            status="pending",
+            status="live",
+            last_live_at=datetime.now(timezone.utc),
         )
         db.add(bl)
         db.flush()
