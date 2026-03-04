@@ -66,7 +66,7 @@ def format_lost_internal(lost_backlinks: list) -> str:
     lines = [f"⚠️ BACKLINK MẤT", f"📅 {_now_str()}", ""]
     total = 0
     for cname, links in by_customer.items():
-        lines.append(f"👤 {cname} ({len(links)} links)")
+        lines.append(f"👤 {cname} ({len(links)} link)")
         for i, bl in enumerate(links, 1):
             price = int(bl.get("price_monthly", 0) or 0)
             total += price
@@ -113,7 +113,7 @@ def format_live_internal(recovered_backlinks: list) -> str:
     lines = [f"✅ BACKLINK PHỤC HỒI", f"📅 {_now_str()}", ""]
     total = 0
     for cname, links in by_customer.items():
-        lines.append(f"👤 {cname} ({len(links)} links)")
+        lines.append(f"👤 {cname} ({len(links)} link)")
         for i, bl in enumerate(links, 1):
             price = int(bl.get("price_monthly", 0) or 0)
             total += price
@@ -172,7 +172,7 @@ def format_inactive_still_live(backlinks: list) -> str:
             )
         lines.append("")
     lines.append(
-        "👉 Các link này vẫn còn tồn tại — hãy liên hệ khách hàng để gia hạn!"
+        "👉 Các link này vẫn tồn tại — hãy liên hệ khách hàng để gia hạn!"
     )
     return "\n".join(lines)
 
