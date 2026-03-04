@@ -28,7 +28,7 @@ def _to_response(bl: Backlink) -> dict:
         "id": bl.id,
         "customer_id": bl.customer_id,
         "website_id": bl.website_id,
-        "source_href": bl.source_href,
+        "backlink_url": bl.backlink_url,
         "anchor_text": bl.anchor_text,
         "target_url": bl.target_url,
         "date_placed": bl.date_placed,
@@ -67,7 +67,7 @@ def list_backlinks(
         )
     if keyword:
         query = query.filter(
-            Backlink.source_href.ilike(f"%{keyword}%")
+            Backlink.backlink_url.ilike(f"%{keyword}%")
             | Backlink.anchor_text.ilike(f"%{keyword}%")
         )
     offset = (page - 1) * limit
@@ -95,14 +95,14 @@ def bulk_create_backlinks(
 
     for item in data.items:
         blacklisted_entry = db.query(BlacklistedLink).filter(
-            BlacklistedLink.href == item.source_href,
+            BlacklistedLink.href == item.backlink_url,
             BlacklistedLink.is_active == True,
         ).first()
         if blacklisted_entry:
-            skipped.append(item.source_href)
+            skipped.append(item.backlink_url)
             continue
 
-        domain = _extract_domain(item.source_href)
+        domain = item.domain
         website = db.query(Website).filter(Website.domain == domain).first()
         if not website:
             website = Website(domain=domain)
@@ -112,7 +112,7 @@ def bulk_create_backlinks(
         bl = Backlink(
             customer_id=item.customer_id,
             website_id=website.id,
-            source_href=item.source_href,
+            backlink_url=item.backlink_url,
             anchor_text=item.anchor_text,
             target_url=item.target_url,
             date_placed=today,

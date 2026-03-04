@@ -6,8 +6,8 @@ from typing import Optional, List
 
 class BacklinkCreate(BaseModel):
     customer_id: int
-    website_id: Optional[int] = None
-    source_href: str
+    domain: str
+    backlink_url: str
     anchor_text: Optional[str] = None
     target_url: Optional[str] = None
 
@@ -26,7 +26,7 @@ class BacklinkResponse(BaseModel):
     id: int
     customer_id: int
     website_id: int
-    source_href: str
+    backlink_url: str
     anchor_text: Optional[str] = None
     target_url: Optional[str] = None
     date_placed: Optional[date] = None

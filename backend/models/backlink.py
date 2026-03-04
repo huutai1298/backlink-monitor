@@ -13,7 +13,7 @@ class Backlink(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     website_id = Column(Integer, ForeignKey("websites.id"), nullable=False)
-    source_href = Column(String(2048), nullable=False)
+    backlink_url = Column(String(500), nullable=False)
     anchor_text = Column(String(500), nullable=True)
     target_url = Column(String(2048), nullable=True)
     date_placed = Column(Date, nullable=True)

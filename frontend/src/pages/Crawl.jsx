@@ -10,6 +10,17 @@ const statusColors = {
   inactive: 'bg-yellow-100 text-yellow-700',
 }
 
+const _extractDomain = (url) => {
+  try {
+    const h = url.startsWith('http') ? url : 'https://' + url
+    let d = new URL(h).hostname.toLowerCase()
+    if (d.startsWith('www.')) d = d.slice(4)
+    return d
+  } catch {
+    return url
+  }
+}
+
 export default function Crawl() {
   const [domain, setDomain] = useState('')
   const [crawling, setCrawling] = useState(false)
@@ -96,12 +107,16 @@ export default function Crawl() {
 
   const handleSaveGroup = async () => {
     const links = results.new_links.filter((l) => selected.includes(l.href))
-    const payload = links.map((l) => ({
-      source_href: l.href,
-      anchor_text: l.anchor_text,
-      customer_id: parseInt(customerMap[l.href]),
-      domain: domain.trim(),
-    }))
+    const payload = links.map((l) => {
+      const customer = customers.find((c) => c.id === parseInt(customerMap[l.href]))
+      return {
+        backlink_url: _extractDomain(l.href),
+        anchor_text: l.anchor_text,
+        customer_id: parseInt(customerMap[l.href]),
+        domain: domain.trim(),
+        target_url: customer?.telegram_group_url || '',
+      }
+    })
     setSaving(true)
     try {
       const res = await api.post('/backlinks/bulk', { items: payload })
