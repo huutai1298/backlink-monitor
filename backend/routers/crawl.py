@@ -46,13 +46,14 @@ def crawl(
     # Get blacklisted hrefs for this domain
     blacklisted_records = (
         db.query(BlacklistedLink)
+        .join(BlacklistedLink.website)
         .filter(
             BlacklistedLink.is_active == True,
-            BlacklistedLink.source_url == data.domain,
+            Website.domain == data.domain,
         )
         .all()
     )
-    blacklisted_hrefs = {bl.href for bl in blacklisted_records}
+    blacklisted_hrefs = {bl.blacklist_url for bl in blacklisted_records}
 
     new_links: List[CrawlLinkItem] = []
     blacklisted_links: List[CrawlLinkItem] = []

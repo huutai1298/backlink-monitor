@@ -81,14 +81,17 @@ def upgrade() -> None:
     op.create_table(
         "blacklisted_links",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("source_url", sa.String(255), nullable=False),
-        sa.Column("href", sa.String(2048), nullable=False),
+        sa.Column("website_id", sa.Integer(), nullable=False),
+        sa.Column("blacklist_url", sa.String(2048), nullable=False),
         sa.Column("anchor_text", sa.String(500), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(), nullable=True, onupdate=sa.func.now()),
+        sa.ForeignKeyConstraint(["website_id"], ["websites.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index("idx_blacklist_website_id", "blacklisted_links", ["website_id"])
+    op.create_index("idx_blacklist_is_active", "blacklisted_links", ["is_active"])
 
     op.create_table(
         "notification_logs",
@@ -119,6 +122,8 @@ def downgrade() -> None:
     op.drop_index("idx_customer_id", table_name="backlinks")
     op.drop_index("idx_website_id", table_name="backlinks")
     op.drop_table("backlinks")
+    op.drop_index("idx_blacklist_is_active", table_name="blacklisted_links")
+    op.drop_index("idx_blacklist_website_id", table_name="blacklisted_links")
     op.drop_table("blacklisted_links")
     op.drop_index("idx_domain_ft", table_name="websites")
     op.drop_index("idx_is_dead", table_name="websites")

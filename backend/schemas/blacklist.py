@@ -4,15 +4,15 @@ from typing import Optional
 
 
 class BlacklistCreate(BaseModel):
-    source_url: str
-    href: str
+    website_id: int
+    blacklist_url: str
     anchor_text: Optional[str] = None
 
 
 class BlacklistResponse(BaseModel):
     id: int
-    source_url: str
-    href: str
+    website_id: int
+    blacklist_url: str
     anchor_text: Optional[str] = None
     is_active: bool
     created_at: Optional[datetime] = None
