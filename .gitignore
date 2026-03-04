@@ -9,3 +9,6 @@ build/
 .venv/
 venv/
 node_modules/
+
+# nginx: track config, ignore certbot certs/challenges
+nginx/certbot/
