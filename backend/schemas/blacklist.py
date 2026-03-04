@@ -17,5 +17,6 @@ class BlacklistResponse(BaseModel):
     is_active: bool
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    website_domain: Optional[str] = None
 
     model_config = {"from_attributes": True}
