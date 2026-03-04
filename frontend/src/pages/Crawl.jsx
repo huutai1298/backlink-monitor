@@ -75,15 +75,12 @@ export default function Crawl() {
           setWebsiteId(wid)
         }
       }
-      if (!wid) {
-        alert('Website chưa có trong hệ thống. Hãy thêm ít nhất 1 backlink trước để tạo website, sau đó mới blacklist được.')
-        return
-      }
       const blacklistedLinks = []
       for (const link of selectedLinks) {
         try {
           await api.post('/blacklist', {
-            website_id: wid,
+            ...(wid ? { website_id: wid } : {}),
+            domain: domain.trim(),
             blacklist_url: link.href,
             anchor_text: link.anchor_text || null,
           })

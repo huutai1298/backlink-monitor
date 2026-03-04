@@ -44,7 +44,24 @@ def add_to_blacklist(
     db: Session = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    entry = BlacklistedLink(**data.model_dump())
+    website_id = data.website_id
+
+    if not website_id:
+        if not data.domain or not data.domain.strip():
+            raise HTTPException(status_code=422, detail="Either website_id or domain must be provided")
+        normalized_domain = data.domain.strip().lower()
+        website = db.query(Website).filter(Website.domain == normalized_domain).first()
+        if not website:
+            website = Website(domain=normalized_domain)
+            db.add(website)
+            db.flush()
+        website_id = website.id
+
+    entry = BlacklistedLink(
+        website_id=website_id,
+        blacklist_url=data.blacklist_url,
+        anchor_text=data.anchor_text,
+    )
     db.add(entry)
     db.commit()
     db.refresh(entry)
