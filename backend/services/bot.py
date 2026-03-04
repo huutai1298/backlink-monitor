@@ -45,6 +45,65 @@ async def _info_handler(update, context) -> None:
     await update.message.reply_text(text)
 
 
+async def _help_handler(update, context) -> None:
+    """Return context-aware help text depending on chat type."""
+    from database import SessionLocal
+    from models.customer import Customer
+
+    chat = update.effective_chat
+    chat_id = str(chat.id)
+    is_internal = bool(INTERNAL_GROUP_ID and chat_id == str(INTERNAL_GROUP_ID))
+
+    if is_internal:
+        text = (
+            "📖 HƯỚNG DẪN SỬ DỤNG BOT\n\n"
+            "🔧 Lệnh dành cho Admin:\n"
+            "/help — Hiển thị hướng dẫn này\n"
+            "/info — Lấy ID & URL của nhóm hiện tại\n"
+            "/check — Xem tổng quan toàn bộ backlink + doanh thu\n"
+            "/check <keyword> — Tìm kiếm backlink theo domain/anchor/URL\n\n"
+            "📊 Thông báo tự động:\n"
+            "• Bot sẽ tự động thông báo khi backlink bị mất hoặc phục hồi\n"
+            "• Thông báo khi website không thể truy cập\n"
+            "• Thông báo link inactive vẫn còn tồn tại\n\n"
+            "💡 Tip: Dùng /check để kiểm tra nhanh trạng thái hệ thống"
+        )
+        await update.message.reply_text(text)
+        return
+
+    db = SessionLocal()
+    try:
+        customer = (
+            db.query(Customer)
+            .filter(Customer.telegram_group_id == chat_id)
+            .first()
+        )
+        if not customer:
+            await update.message.reply_text(
+                "❌ Nhóm này chưa được đăng ký trong hệ thống!\n"
+                "Vui lòng liên hệ admin để được hỗ trợ."
+            )
+            return
+
+        text = (
+            f"📖 HƯỚNG DẪN SỬ DỤNG BOT\n\n"
+            f"Xin chào {customer.name}! 👋\n\n"
+            f"🔧 Các lệnh có thể sử dụng:\n"
+            f"/help — Hiển thị hướng dẫn này\n"
+            f"/check — Xem tổng quan backlink của bạn\n"
+            f"/check <keyword> — Tìm kiếm backlink theo domain hoặc anchor text\n\n"
+            f"📊 Thông báo tự động:\n"
+            f"• Bạn sẽ nhận thông báo khi backlink bị mất hoặc được phục hồi\n\n"
+            f"💡 Tip: Dùng /check để kiểm tra nhanh trạng thái backlink của bạn"
+        )
+        await update.message.reply_text(text)
+    except Exception:
+        logger.exception("Error handling /help command")
+        await update.message.reply_text("❌ Đã xảy ra lỗi. Vui lòng thử lại.")
+    finally:
+        db.close()
+
+
 async def _check_handler(update, context) -> None:
     """
     /check          — backlink overview (internal: all + revenue; customer: own counts)
@@ -220,6 +279,7 @@ def start_bot(app) -> None:
         return
 
     bot_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    bot_app.add_handler(CommandHandler("help", _help_handler))
     bot_app.add_handler(CommandHandler("info", _info_handler))
     bot_app.add_handler(CommandHandler("check", _check_handler))
 

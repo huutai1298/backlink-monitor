@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api/axios'
-import { Search, CheckSquare, Square, Plus } from 'lucide-react'
+import { Search, CheckSquare, Square, Plus, RotateCcw } from 'lucide-react'
 
 const STATUS_BADGE = {
   live: 'bg-green-50 text-green-700',
@@ -30,6 +30,7 @@ export default function Crawl() {
   const [showModal, setShowModal] = useState(false)
   const [groupCustomer, setGroupCustomer] = useState('')
   const [groupBlacklist, setGroupBlacklist] = useState(false)
+  const [blacklistItems, setBlacklistItems] = useState([])
 
   useEffect(() => {
     api.get('/customers').then(r => setCustomers(r.data))
@@ -44,6 +45,9 @@ export default function Crawl() {
     try {
       const res = await api.post('/crawl', { domain: normalizeDomain(domain) })
       setResult(res.data)
+      const blRes = await api.get('/blacklist')
+      const domainBlacklist = blRes.data.filter(item => item.website_domain === normalizeDomain(domain))
+      setBlacklistItems(domainBlacklist)
     } catch {
       setResult({ error: 'Crawl thất bại. Vui lòng thử lại.' })
     } finally {
@@ -91,6 +95,10 @@ export default function Crawl() {
         new_links: prev.new_links.filter(l => !handled.has(l.href)),
         blacklisted_links: [...(prev.blacklisted_links || []), ...blacklistedLinks],
       }))
+      // Refetch blacklist for this domain
+      const blRes = await api.get('/blacklist')
+      const domainBlacklist = blRes.data.filter(item => item.website_domain === normalizeDomain(domain))
+      setBlacklistItems(domainBlacklist)
     } else {
       // Thêm backlinks với cùng 1 khách hàng
       const payload = selectedLinks.map(l => ({
@@ -116,6 +124,12 @@ export default function Crawl() {
 
     setSelected([])
     setShowModal(false)
+  }
+
+  const handleRestoreBlacklist = async (id) => {
+    if (!confirm('Khôi phục link này khỏi blacklist?')) return
+    await api.patch(`/blacklist/${id}/restore`)
+    setBlacklistItems(prev => prev.filter(item => item.id !== id))
   }
 
   return (
@@ -215,21 +229,47 @@ export default function Crawl() {
           </div>
 
           {/* Blacklisted */}
-          {result.blacklisted_links?.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">🚫 Blacklisted ({result.blacklisted_links.length})</h2>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {result.blacklisted_links.map(link => (
-                  <div key={link.href} className="px-5 py-3 hover:bg-gray-50">
-                    <p className="text-sm text-gray-800 truncate">{link.href}</p>
-                    {link.anchor_text && <p className="text-xs text-gray-400 mt-0.5">Anchor: {link.anchor_text}</p>}
-                  </div>
-                ))}
-              </div>
+          <div className="bg-white rounded-xl border border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900">
+                🚫 Blacklisted ({blacklistItems.length})
+              </h2>
             </div>
-          )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">URL</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Anchor</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Ngày thêm</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blacklistItems.length === 0 ? (
+                    <tr><td colSpan={4} className="px-5 py-6 text-center text-gray-400 text-sm">Không có link trong blacklist</td></tr>
+                  ) : blacklistItems.map(item => (
+                    <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-5 py-3 text-gray-700 max-w-xs truncate">{item.blacklist_url}</td>
+                      <td className="px-5 py-3 text-gray-500">{item.anchor_text || '—'}</td>
+                      <td className="px-5 py-3 text-gray-400 whitespace-nowrap">
+                        {item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : '—'}
+                      </td>
+                      <td className="px-5 py-3">
+                        <button
+                          onClick={() => handleRestoreBlacklist(item.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700"
+                        >
+                          <RotateCcw size={12} />
+                          Khôi phục
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
