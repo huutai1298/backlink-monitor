@@ -15,9 +15,11 @@ def start_scheduler(app) -> None:
         from database import SessionLocal
         from services.status_updater import update_all_domains
 
+        logger.info("⏰ Scheduled crawl started")
         db = SessionLocal()
         try:
             await update_all_domains(db)
+            logger.info("✅ Scheduled crawl completed")
         except Exception:
             logger.exception("Scheduled crawl_all job failed")
         finally:
@@ -28,4 +30,5 @@ def start_scheduler(app) -> None:
         IntervalTrigger(minutes=CRAWL_INTERVAL_MINUTES),
     )
     scheduler.start()
+    logger.info("🕐 Scheduler started — crawl every %d minutes", CRAWL_INTERVAL_MINUTES)
     app.state.scheduler = scheduler
