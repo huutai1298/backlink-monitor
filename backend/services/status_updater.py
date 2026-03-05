@@ -19,11 +19,13 @@ def _normalize_url(url: str) -> str:
 async def update_all_domains(db: Session) -> None:
     """Crawl all active websites one by one and update backlink statuses."""
     websites = db.query(Website).filter(Website.is_active == True).all()
+    logger.info("🔍 Auto-crawl: %d active websites to check", len(websites))
     for website in websites:
         try:
             await update_single_domain(website.domain, db)
         except Exception as exc:
             logger.error("Error updating domain %s: %s", website.domain, exc)
+    logger.info("🏁 Auto-crawl finished: %d websites processed", len(websites))
 
 
 async def update_single_domain(domain: str, db: Session) -> None:
