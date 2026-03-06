@@ -54,6 +54,7 @@ def crawl_domain(domain: str) -> dict:
                     impersonate="chrome124",
                     timeout=CRAWL_TIMEOUT,
                     allow_redirects=True,
+                    verify=False,  # Bypass SSL verify for broken sites
                 )
                 if response.status_code >= 400:
                     last_error = f"http_{response.status_code}"
