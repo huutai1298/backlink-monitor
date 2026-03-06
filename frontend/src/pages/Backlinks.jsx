@@ -35,17 +35,19 @@ export default function Backlinks() {
   const [filterStatus, setFilterStatus] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [editItem, setEditItem] = useState(null)
   const [editForm, setEditForm] = useState({})
 
   const fetchData = () => {
     setLoading(true)
-    const params = {}
+    const params = { page, limit: PAGE_SIZE }
     if (filterCustomer) params.customer_id = filterCustomer
     if (filterStatus) params.status_filter = filterStatus
     if (search) params.keyword = search
     api.get('/backlinks', { params }).then(r => {
       setBacklinks(r.data.items || [])
+      setTotal(r.data.total || 0)
       setLoading(false)
     }).catch(() => setLoading(false))
   }
@@ -56,10 +58,9 @@ export default function Backlinks() {
 
   useEffect(() => {
     fetchData()
-  }, [filterCustomer, filterStatus, search])
+  }, [filterCustomer, filterStatus, search, page])
 
-  const paginated = backlinks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalPages = Math.ceil(backlinks.length / PAGE_SIZE)
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const openEdit = (item) => {
     setEditItem(item)
@@ -139,9 +140,9 @@ export default function Backlinks() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
-              ) : paginated.length === 0 ? (
+              ) : backlinks.length === 0 ? (
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
-              ) : paginated.map(bl => (
+              ) : backlinks.map(bl => (
                 <tr key={bl.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">{bl.website_domain}</td>
                   <td className="px-5 py-3 text-blue-600 max-w-xs truncate">
@@ -182,7 +183,7 @@ export default function Backlinks() {
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
-              {backlinks.length} kết quả • Trang {page}/{totalPages}
+              {total} kết quả • Trang {page}/{totalPages}
             </span>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(1)} disabled={page === 1}
