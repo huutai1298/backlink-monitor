@@ -16,15 +16,17 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_domain(raw: str) -> str:
-    """Strip protocol, www, port, path, query and fragment from a domain string."""
+    """Strip protocol, port, path, query and fragment from a domain string.
+
+    NOTE: www is intentionally preserved — crawl exactly what the user provided.
+    """
     d = raw.strip()
     # Ensure urlparse sees a valid scheme so netloc is populated correctly
     if not re.match(r'^https?://', d, flags=re.IGNORECASE):
         d = 'https://' + d
     parsed = urlparse(d)
     netloc = parsed.netloc or parsed.path
-    netloc = netloc.split(':')[0]  # strip port
-    netloc = re.sub(r'^www\.', '', netloc, flags=re.IGNORECASE)
+    netloc = netloc.split(':')[0]  # strip port only; keep www as-is
     return netloc.lower()
 
 
@@ -102,7 +104,6 @@ def crawl_domain(domain: str) -> dict:
 
 
 def _normalise_domain(netloc: str) -> str:
-    domain = netloc.lower().split(":")[0]
-    if domain.startswith("www."):
-        domain = domain[4:]
-    return domain
+    # Strip port only; www is preserved intentionally so www and non-www
+    # are treated as distinct hosts (matching user-provided domain exactly).
+    return netloc.lower().split(":")[0]

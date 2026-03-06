@@ -17,10 +17,8 @@ router = APIRouter(prefix="/api/backlinks", tags=["backlinks"])
 
 def _extract_domain(url: str) -> str:
     parsed = urlparse(url)
-    netloc = parsed.netloc.lower().split(":")[0]
-    if netloc.startswith("www."):
-        netloc = netloc[4:]
-    return netloc
+    # www is preserved intentionally — do not normalise away www prefix
+    return parsed.netloc.lower().split(":")[0]
 
 
 def _to_response(bl: Backlink) -> dict:

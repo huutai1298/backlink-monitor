@@ -21,7 +21,7 @@ def crawl(
     from urllib.parse import urlparse
     from services.crawler import crawl_domain as do_crawl, _normalise_domain as normalise
 
-    # Normalize: strip protocol, www, path
+    # Normalize: strip protocol and path; www is kept as-is per user input
     raw = data.domain.strip()
     if raw.startswith(("http://", "https://")):
         raw = urlparse(raw).netloc or raw
