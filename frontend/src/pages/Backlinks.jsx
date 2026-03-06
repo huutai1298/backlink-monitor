@@ -127,6 +127,7 @@ export default function Backlinks() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">STT</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Domain</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Backlink URL</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Anchor</th>
@@ -139,11 +140,12 @@ export default function Backlinks() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
               ) : backlinks.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
-              ) : backlinks.map(bl => (
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
+              ) : backlinks.map((bl, index) => (
                 <tr key={bl.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{(page - 1) * PAGE_SIZE + index + 1}</td>
                   <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">{bl.website_domain}</td>
                   <td className="px-5 py-3 text-blue-600 max-w-xs truncate">
                     <a href={bl.backlink_url} target="_blank" rel="noreferrer" className="hover:underline">
