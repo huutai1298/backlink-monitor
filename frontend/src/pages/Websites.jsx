@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
-import { Pencil, Trash2, RefreshCw } from 'lucide-react'
+import { Pencil, Trash2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+
+const PAGE_SIZE = 20
+
+function getPageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  if (current <= 4) return [1, 2, 3, 4, 5, '...', total]
+  if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+  return [1, '...', current - 1, current, current + 1, '...', total]
+}
 
 export default function Websites() {
   const [websites, setWebsites] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showDead, setShowDead] = useState(false)
+  const [page, setPage] = useState(1)
   const [editItem, setEditItem] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [crawlingId, setCrawlingId] = useState(null)
@@ -23,6 +33,11 @@ export default function Websites() {
   }
 
   useEffect(() => { fetchData() }, [search, showDead])
+
+  useEffect(() => { setPage(1) }, [search, showDead])
+
+  const paginated = websites.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(websites.length / PAGE_SIZE)
 
   const openEdit = (item) => {
     setEditItem(item)
@@ -100,7 +115,7 @@ export default function Websites() {
                 <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
               ) : websites.length === 0 ? (
                 <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
-              ) : websites.map(w => (
+              ) : paginated.map(w => (
                 <tr key={w.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{w.domain}</td>
                   <td className="px-5 py-3 text-gray-600">{w.price_monthly ? Number(w.price_monthly).toLocaleString('vi-VN') + ' ₫' : '—'}</td>
@@ -134,6 +149,43 @@ export default function Websites() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs text-gray-500">
+              {websites.length} kết quả • Trang {page}/{totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(1)} disabled={page === 1}
+                className="px-2 py-1.5 rounded-lg text-xs hover:bg-gray-100 disabled:opacity-40">«</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+                <ChevronLeft size={16} />
+              </button>
+              {getPageNumbers(page, totalPages).map((p, i) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-gray-400">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                      p === page
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-100 text-gray-600'
+                    }`}
+                  >{p}</button>
+                )
+              )}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+                <ChevronRight size={16} />
+              </button>
+              <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
+                className="px-2 py-1.5 rounded-lg text-xs hover:bg-gray-100 disabled:opacity-40">»</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
