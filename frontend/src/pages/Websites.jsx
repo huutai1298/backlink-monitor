@@ -102,6 +102,7 @@ export default function Websites() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">STT</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Domain</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Giá/tháng</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Danh mục</th>
@@ -112,11 +113,12 @@ export default function Websites() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-gray-400">Đang tải...</td></tr>
               ) : websites.length === 0 ? (
-                <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
-              ) : paginated.map(w => (
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-gray-400">Không có dữ liệu</td></tr>
+              ) : paginated.map((w, index) => (
                 <tr key={w.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{(page - 1) * PAGE_SIZE + index + 1}</td>
                   <td className="px-5 py-3 font-medium text-gray-900">{w.domain}</td>
                   <td className="px-5 py-3 text-gray-600">{w.price_monthly ? Number(w.price_monthly).toLocaleString('vi-VN') + ' ₫' : '—'}</td>
                   <td className="px-5 py-3 text-gray-600">{w.category || '—'}</td>
