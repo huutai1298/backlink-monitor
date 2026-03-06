@@ -14,8 +14,7 @@ const normalizeDomain = (input) => {
   let d = input.trim()
   // Strip protocol
   d = d.replace(/^https?:\/\//i, '')
-  // Strip www.
-  d = d.replace(/^www\./i, '')
+  // NOTE: www is intentionally preserved — send domain exactly as user typed
   // Strip path, query, hash
   d = d.split('/')[0].split('?')[0].split('#')[0]
   return d.toLowerCase()
