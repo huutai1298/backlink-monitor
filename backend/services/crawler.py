@@ -46,8 +46,15 @@ def crawl_domain(domain: str) -> dict:
     domain = _clean_domain(domain)
     last_error = "unknown"
 
+    # Build list of URLs to try: original domain first, then www fallback
+    urls_to_try = []
     for scheme in ["https", "http"]:
-        url = f"{scheme}://{domain}"
+        urls_to_try.append(f"{scheme}://{domain}")
+        # If domain doesn't start with www., also try www. variant as fallback
+        if not domain.startswith("www."):
+            urls_to_try.append(f"{scheme}://www.{domain}")
+
+    for url in urls_to_try:
         for attempt in range(CRAWL_RETRY):
             try:
                 logger.debug("Crawling %s (attempt %d/%d)", url, attempt + 1, CRAWL_RETRY)
@@ -56,12 +63,12 @@ def crawl_domain(domain: str) -> dict:
                     impersonate="chrome124",
                     timeout=CRAWL_TIMEOUT,
                     allow_redirects=True,
-                    verify=False,  # Bypass SSL verify for broken sites
+                    verify=False,  # Bypass SSL verify for broken/mismatched cert sites
                 )
                 if response.status_code >= 400:
                     last_error = f"http_{response.status_code}"
                     logger.warning("Crawl %s → HTTP %s", url, response.status_code)
-                    break  # HTTP error — don't retry, try next scheme
+                    break  # HTTP error — don't retry, try next URL
 
                 soup = BeautifulSoup(response.text, "lxml")
                 base_domain = _normalise_domain(domain)
