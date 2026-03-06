@@ -20,6 +20,13 @@ const STATUS_LABELS = {
 
 const PAGE_SIZE = 20
 
+function getPageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  if (current <= 4) return [1, 2, 3, 4, 5, '...', total]
+  if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+  return [1, '...', current - 1, current, current + 1, '...', total]
+}
+
 export default function Backlinks() {
   const [backlinks, setBacklinks] = useState([])
   const [customers, setCustomers] = useState([])
@@ -174,15 +181,37 @@ export default function Backlinks() {
 
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">{backlinks.length} kết quả</span>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+            <span className="text-xs text-gray-500">
+              {backlinks.length} kết quả • Trang {page}/{totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(1)} disabled={page === 1}
+                className="px-2 py-1.5 rounded-lg text-xs hover:bg-gray-100 disabled:opacity-40">«</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+              {getPageNumbers(page, totalPages).map((p, i) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-gray-400">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                      p === page
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-100 text-gray-600'
+                    }`}
+                  >{p}</button>
+                )
+              )}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
                 <ChevronRight size={16} />
               </button>
+              <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
+                className="px-2 py-1.5 rounded-lg text-xs hover:bg-gray-100 disabled:opacity-40">»</button>
             </div>
           </div>
         )}
